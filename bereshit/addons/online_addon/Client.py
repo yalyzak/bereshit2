@@ -38,14 +38,16 @@ class Client:
         for m in msgs:
             # Update container position
             self.Continer.children[0].position = Vector3(*m["position"])
+            self.Continer.children[0].Rigidbody.velocity = Vector3(*m["velocity"])
 
         # --- prepare and queue outgoing data ---
         for obj in self.data_objects:
             name_bytes = obj.name.encode()
             msg = struct.pack(
-                f"!I{len(name_bytes)}sfff",
+                f"!I{len(name_bytes)}sffffff",
                 len(name_bytes), name_bytes,
-                obj.position.x, obj.position.y, obj.position.z
+                obj.position.x, obj.position.y, obj.position.z,
+                obj.Rigidbody.velocity.x, obj.Rigidbody.velocity.y, obj.Rigidbody.velocity.z
             )
             self.outgoing.append(msg)
 
@@ -80,9 +82,10 @@ class Client:
             fmt = f"!I{name_len}sfff"
             unpacked = struct.unpack(fmt, m)
 
-            _, name, x, y, z = unpacked
+            _, name, x, y, z, x2, y2, z2 = unpacked
             decoded.append({
                 "name": name.decode(),
-                "position": (x, y, z)
+                "position": (x, y, z),
+                "velocity": (x2, y2, z2)
             })
         return decoded

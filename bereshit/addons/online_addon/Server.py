@@ -15,22 +15,44 @@ while True:
     except ConnectionResetError:
         # Ignore ICMP "port unreachable" errors (Windows quirk)
         continue
+    except Exception as e:
+        print("Recv error:", e)
+        continue
 
     if addr not in clients:
         clients.add(addr)
         print("New client:", addr)
 
-    # Unpack message
-    name_len = struct.unpack("!I", data[:4])[0]
-    fmt = f"!I{name_len}sfff"
-    _, name, x, y, z = struct.unpack(fmt, data)
+    # Try to decode safely
+    try:
+        if len(data) < 4:
+            raise ValueError("Packet too short")
 
-    print(f"From {addr} -> Name: {name.decode()}, Pos: ({x:.2f}, {y:.2f}, {z:.2f})")
+        # First 4 bytes = name length
+        name_len = struct.unpack("!I", data[:4])[0]
+        fmt = f"!I{name_len}sffffff"   # 6 floats total: pos(3) + vel(3)
+        expected_len = struct.calcsize(fmt)
 
-    # Broadcast to all other clients
-    for other_addr in clients:
-        if other_addr != addr:
-            try:
-                sock.sendto(data, other_addr)
-            except Exception:
-                print(f"Error sending to {other_addr}")
+        if len(data) != expected_len:
+            raise ValueError(f"Bad packet length: got {len(data)}, expected {expected_len}")
+
+        unpacked = struct.unpack(fmt, data)
+        _, name, x, y, z, vx, vy, vz = unpacked
+
+        print(
+            f"From {addr} -> Name: {name.decode(errors='ignore')}, "
+            f"Pos: ({x:.2f}, {y:.2f}, {z:.2f}), "
+            f"Vel: ({vx:.2f}, {vy:.2f}, {vz:.2f})"
+        )
+
+        # Broadcast to all other clients
+        for other_addr in list(clients):
+            if other_addr != addr:
+                try:
+                    sock.sendto(data, other_addr)
+                except Exception as e:
+                    print(f"Error sending to {other_addr}: {e}")
+                    clients.discard(other_addr)
+
+    except Exception as e:
+        print(f"Bad packet from {addr}: {e}")
