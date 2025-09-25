@@ -7,6 +7,5 @@ from .Material import Material
 from .Camera import Camera
 from .MeshRander import MeshRander
 from .World import World
-from online_addon import Client
 
-__all__ = ["Vector3", "Quaternion", "Object", "Rigidbody", "BoxCollider", "Material", "Camera", "MeshRander", "World", "Client"]
+__all__ = ["Vector3", "Quaternion", "Object", "Rigidbody", "BoxCollider", "Material", "Camera", "MeshRander", "World"]
