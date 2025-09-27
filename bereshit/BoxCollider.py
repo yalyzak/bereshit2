@@ -242,11 +242,12 @@ class BoxCollider:
 
                 plane_face, incident_face = x
                 for i in range(4):
-                    shape_points = [1, 2, 3, 4]
+                    shape_points = [p.to_tuple() for p in incident_face]
+
                     A = plane_face[i].to_tuple()
                     B = plane_face[(i + 1) % 4].to_tuple()
-                    for i in range(len(incident_face)):
-                        shape_points[i] = incident_face[i].to_tuple()
+                    for j in range(len(incident_face)):
+                        shape_points[j] = incident_face[j].to_tuple()
                     line_points = [A, B]
                     for lp in line_points:
                         inside, depth = point_distance_to_shape_signed(lp, shape_points)
@@ -255,25 +256,26 @@ class BoxCollider:
                     p = line_shape_intersections(line_points, shape_points)
                     if len(p) > 0:
                         result.append(p[0])
-                        # result.append(p[1])
                 if len(result) == 0:
                     result = result2
 
                 for i in range(4):
-                    shape_points = [1, 2, 3, 4]
+                    shape_points = [p.to_tuple() for p in incident_face]
+
                     A = incident_face[i].to_tuple()
                     B = incident_face[(i + 1) % 4].to_tuple()
-                    for i in range(len(plane_face)):
-                        shape_points[i] = plane_face[i].to_tuple()
+                    for j in range(len(incident_face)):
+                        shape_points[j] = incident_face[j].to_tuple()
                     line_points = [A, B]
-                    p = line_shape_intersections(line_points, shape_points)
-                    # if len(p)>0:
-                    #     result.append(p[0])
-                    # result.append(p[1])
                     for lp in line_points:
                         inside, depth = point_distance_to_shape_signed(lp, shape_points)
-                        if depth <= -0.1 and point_in_shape(lp, shape_points):
-                            result.append(lp)
+                        if point_in_shape(lp, shape_points):
+                            result2.append(lp)
+                    p = line_shape_intersections(line_points, shape_points)
+                    if len(p) > 0:
+                        result.append(p[0])
+                if len(result) == 0:
+                    result = result2
                 return result
 
             def clip_polygon_against_plane(polygon, plane_point, plane_normal):
