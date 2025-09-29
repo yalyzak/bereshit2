@@ -69,7 +69,7 @@ class World:
                 if (rb11 is None or rb11.isKinematic) and (rb2 is None or rb2.isKinematic):
                     continue
 
-                result = obj1.collider.check_collision(obj2, single_point=True)
+                result = obj1.collider.check_collision(obj2, single_point=False)
                 if result is None:
                     continue
 
@@ -80,6 +80,7 @@ class World:
                 ref_face_center, incident_face = arr[0], arr[1] if isinstance(arr, (list, tuple)) and len(
                     arr) >= 2 else (None, None)
                 if type(contact_points[0]) == tuple:  # For each point in the manifold, add a separate constraint
+                    N = len(contact_points)
                     for (contact_point, normal, penetration) in contact_points:
                         r1 = contact_point - rb1.parent.position
                         r2 = contact_point - rb2.parent.position
@@ -93,6 +94,7 @@ class World:
                         v_norm = v_rel.dot(normal)
 
                         contacts2.append({
+                            "j1" : 0,
                             "r1": r1,
                             "r2": r2,
                             "rb1": rb1,
@@ -119,6 +121,7 @@ class World:
                     v_norm = v_rel.dot(normal)
 
                     contacts.append([{
+                        "j1": 0,
                         "r1": r1,
                         "r2": r2,
                         "rb1": rb1,
@@ -171,9 +174,9 @@ class World:
                               + c["normal"].dot(term1 + term2)
                 denominator2 = (0 if rb1.isKinematic else 1 / rb1.mass) \
                                + (0 if rb2.isKinematic else 1 / rb2.mass)
-
-                k[i, 0] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
-                k[i, 1] = (-(1 + restitution) * c["v_norm"]) / denominator
+                c["J1"] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
+                # k[i, 0] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
+                # k[i, 1] = (-(1 + restitution) * c["v_norm"]) / denominator
                 # k[i] /= length
 
         # STEP 4: Solve impulses (nonnegative)
@@ -183,7 +186,7 @@ class World:
         # STEP 5: Apply impulses for each contact point
         for contact_point in contacts:
             for i, contact in enumerate(contact_point):
-                J1 = k[i, 0]
+                J1 = contact["J1"]
                 J2 = k[i, 1]
 
                 if contact["v_norm"] >= 0:
@@ -204,10 +207,10 @@ class World:
 
                     if not rb1.isKinematic and not rb2.isKinematic:
                         self.resolve_dynamic_collision(contact, J1, 0, flage)
-                        # self.apply_friction_impulse(contact, n, J)
+                        self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
                         self.resolve_kinematic_collision(contact, J1, 0, flage)
-                        # self.apply_friction_impulse(contact, n, J1)
+                        self.apply_friction_impulse(contact, n, J1)
 
         return contacts
 

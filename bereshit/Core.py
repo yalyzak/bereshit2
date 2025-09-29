@@ -20,10 +20,10 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60):
     if gizmos:
         hit_points = [Object(size=(0.1,0.1,0.1),position=(100,100,100),children=[Object(size=(0.1,0.1,0.1),position=(100,100,100)) for i in range(8)]) for i in range(8)]
         gizmos_container = Object(size=(0,0,0),children=hit_points)
-        world = World(children=[scene,gizmos_container])
+        world = World(children=scene + gizmos_container)
 
     else:
-        world = World(children=[scene])
+        world = World(children=scene)
     async def main_logic():
         start_wall_time = time.time()
         steps = 0

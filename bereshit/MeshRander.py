@@ -102,10 +102,13 @@ class MeshRander:
             raw_colors = mesh.visual.vertex_colors[:, :3]
             colors = [tuple(c / 255.0) for c in raw_colors]
         elif hasattr(mesh.visual, 'material') and mesh.visual.material is not None:
-            diffuse = mesh.visual.material.diffuse
-            if diffuse is not None:
-                colors = [tuple(diffuse)] * len(vertices)
-            else:
+            try:
+                diffuse = mesh.visual.material.diffuse
+                if diffuse is not None:
+                    colors = [tuple(diffuse)] * len(vertices)
+                else:
+                    colors = [(1.0, 1.0, 1.0)] * len(vertices)  # default white
+            except:
                 colors = [(1.0, 1.0, 1.0)] * len(vertices)  # default white
         else:
             colors = [(1.0, 1.0, 1.0)] * len(vertices)  # default white
