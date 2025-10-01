@@ -1,7 +1,7 @@
 import socket
 import struct
 from collections import deque
-from bereshit import World, Object, Rigidbody, BoxCollider, Vector3, MeshRander
+from bereshit import World, Object, Rigidbody, BoxCollider, Vector3, Quaternion, MeshRander
 
 class Client:
     def __init__(self, host, port, data_objects=None):
@@ -38,7 +38,7 @@ class Client:
         for m in msgs:
             # Update container position
             self.Continer.children[0].position = Vector3(*m["position"])
-            self.Continer.children[0].quaternion = Vector3(*m["quaternion"])
+            self.Continer.children[0].quaternion = Quaternion(*m["quaternion"])
 
             self.Continer.children[0].Rigidbody.velocity = Vector3(*m["velocity"])
 

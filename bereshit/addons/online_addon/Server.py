@@ -39,11 +39,6 @@ while True:
         unpacked = struct.unpack(fmt, data)
         _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
 
-        print(
-            f"From {addr} -> Name: {name.decode(errors='ignore')}, "
-            f"Pos: ({x:.2f}, {y:.2f}, {z:.2f}), "
-            f"Vel: ({vx:.2f}, {vy:.2f}, {vz:.2f})"
-        )
 
         # Broadcast to all other clients
         for other_addr in list(clients):

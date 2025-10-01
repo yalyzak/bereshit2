@@ -1,7 +1,6 @@
 from bereshit import Object, Camera, Vector3, Rigidbody, BoxCollider, MeshRander, Material, Core
 from bereshit.addons.online_addon import Client
-from bereshit.addons.essentials.FPS_cam import rotate
-from bereshit.addons.essentials.CamController import CamController
+from bereshit.addons.essentials import CamController, PlayerController, FPS_cam
 from bereshit.addons.essentials.debug import debug
 from bereshit.addons.essentials.Shoot import Shoot
 
@@ -9,20 +8,21 @@ import copy
 # base object template
 base_obj = Object(
     position=(0, 100, 0),
-    size=(5, 1, 5),
+    size=(1, 1, 1),
     rotation=(0,0, 0),
     name="obj"
 )
-r=1
+r=0.6
 base_obj.add_component(Rigidbody(useGravity=True, velocity=Vector3(0, 0, 0), restitution=r))
 base_obj.add_component(BoxCollider())
 base_obj.add_component(Material(color="blue"))
+# base_obj.add_component(MeshRander(obj_path="C:/Users/User/Downloads/low_poly_male_character_base.glb"))
 
 # stack of 10 objects
 stack = []
 for i in range(1):
     obj_copy = copy.deepcopy(base_obj)
-    obj_copy.position = Vector3(0, 0, 0)  # space slightly so no initial overlap
+    obj_copy.position = Vector3(0, i, 0)  # space slightly so no initial overlap
     obj_copy.name = f"obj_{i}"
     stack.append(obj_copy)
 
@@ -32,23 +32,18 @@ floor.add_component(Rigidbody(isKinematic=True, restitution=r,mass=9999))
 floor.add_component(BoxCollider())
 
 # camera
-camera = Object(size=(1,1,1), position=(5,0,-5), name='camera')
+camera = Object(size=(1,1,1), position=(20,0,0), name='camera',rotation=(0,-90,0))
 camera.add_component(Camera(shading="wire"))
 camera.add_component(MeshRander(shape="empty"))
 camera.add_component(CamController())
-camera.add_component(Rigidbody(useGravity=False))
+camera.add_component(Rigidbody(useGravity=False,restitution=r))
 camera.add_component(BoxCollider())
-camera.add_component(rotate())
+camera.add_component(FPS_cam())
 camera.add_component(Shoot())
-stack[0].add_component(debug(floor))
-camera.add_component(Client("192.168.1.19", 5000, data_objects=[camera]))
+# camera.add_component(debug(None))
+# camera.add_component(Client("192.168.1.19", 5000, data_objects=[camera]))
 
 # scene with stacked objects
-scene = Object(
-    position=Vector3(0,0,0),
-    size=(0,0,0),
-    children=[floor, camera],
-    name="scene"
-)
+scene = [floor, camera] + stack
 
-Core.run(scene, gizmos=False, speed=1, tick=1/60, scriptRefreshRate=1)
+Core.run(scene, gizmos=False, speed=1, tick=1/60, scriptRefreshRate=60)
