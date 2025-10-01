@@ -149,9 +149,9 @@ class World:
                 rb2 = c["rb2"]
                 restitution = 0.0
 
-                # if c["v_norm"] > -1:
-                #     restitution
-                if rb1 and rb2:
+                if c["v_norm"] > -0.1 and c["v_norm"] < 0:
+                    restitution
+                elif rb1 and rb2:
                     restitution = min(rb1.restitution, rb2.restitution)
                 elif rb1:
                     restitution = rb1.restitution
@@ -160,6 +160,7 @@ class World:
 
                 rn1 = c["r1"].cross(c["normal"])  # Vector3
                 rn2 = c["r2"].cross(c["normal"])
+
                 if not rb1.isKinematic:
                     term1 = (Vector3.from_np(Iinv_world(rb1) @ rn1.to_np())).cross(c["r1"])
                 else:
@@ -196,7 +197,7 @@ class World:
                 #
                 #     continue  # separating
                 flage = (restitution == 0)
-                flage = False
+                # flage = False
                 n = contact["normal"]
 
                 if contact["rb1"] and contact["rb2"]:
@@ -206,10 +207,10 @@ class World:
                     # rb2.isKinematic = True
 
                     if not rb1.isKinematic and not rb2.isKinematic:
-                        self.resolve_dynamic_collision(contact, J1, 0, flage)
+                        self.resolve_dynamic_collision(contact, J1, 0.1, flage)
                         self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
-                        self.resolve_kinematic_collision(contact, J1, 0, flage)
+                        self.resolve_kinematic_collision(contact, J1, 0.1, flage)
                         self.apply_friction_impulse(contact, n, J1)
 
         return contacts
@@ -290,7 +291,9 @@ class World:
         if rb1 and not rb1.isKinematic:
             rb1.velocity += impulse_vec / rb1.mass
             if flage:
-                rb2.force = Vector3()
+                rb1.force = Vector3()
+                # rb1.velocity = Vector3()
+
             # Angular impulse for rb1
             r1 = contact["r1"]
             angular_impulse1 = r1.cross(impulse_vec2)
@@ -300,6 +303,7 @@ class World:
             rb2.velocity -= impulse_vec / rb2.mass
             if flage:
                 rb2.force = Vector3()
+                # rb2.velocity = Vector3()
             # Angular impulse for rb2
             r2 = contact["r2"]
             angular_impulse2 = r2.cross(impulse_vec2)
@@ -320,9 +324,9 @@ class World:
         if rb1 and not rb1.isKinematic:
             rb1.velocity += impulse_vec / rb1.mass
             if flage:
-                normal = rb1.force * n
-                rb1.force += normal
-            # rb2.force = Vector3()
+                # normal = rb1.force * n
+                # rb1.force += normal
+                rb1.force = Vector3()
             # Angular impulse for rb1
             r1 = contact["r1"]
             angular_impulse1 = r1.cross(impulse_vec2)
@@ -334,8 +338,10 @@ class World:
         elif rb2 and not rb2.isKinematic:
             rb2.velocity -= (impulse_vec / rb2.mass)
             if flage:
-                normal = rb2.force * n
-                rb2.force += normal
+                rb2.force = Vector3()
+
+                # normal = rb2.force * n
+                # rb2.force += normal
 
             r2 = contact["r2"]
             angular_impulse2 = r2.cross(-impulse_vec2)  # r2 × (-J)

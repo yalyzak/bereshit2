@@ -120,6 +120,13 @@ class Object:
             self.children.append(new_child)
 
     def add_component(self, component, name=None):
+        # --- handle list input first ---
+        if isinstance(component, list):
+            for c in component:
+                self.add_component(c)  # just call normally
+            return self
+
+        # --- single component ---
         if name is None:
             name = component.__class__.__name__
             if hasattr(component, "attach"):
@@ -128,12 +135,14 @@ class Object:
                     name = result
         else:
             if hasattr(component, "attach"):
-                component.attach(self)  # call it, but ignore the result
+                component.attach(self)  # ignore result
 
         self.components[name] = component
         component.parent = self  # optional back-reference
+
         if hasattr(component, 'start') and component.start is not None:
             component.start()
+
         return self
 
     def __init__(self, position=None, rotation=None, size=None, children=None, components=None,
