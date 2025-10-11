@@ -1,6 +1,33 @@
-import moderngl
+# --- Preload moderngl_window submodules (fix for Nuitka onefile) ---
+import importlib
+import sys
+
+for name in [
+    "moderngl_window.resources",
+    "moderngl_window.resources.programs",
+    "moderngl_window.resources.textures",
+    "moderngl_window.resources.scenes",
+]:
+    try:
+        if name not in sys.modules:
+            importlib.import_module(name)
+    except Exception as e:
+        print(f"Warning preloading {name}:", e)
+
+
+# --- Disable automatic resource registration if no "scene" folder exists ---
+import os
+from pathlib import Path
+
+scene_path = Path(__file__).parent / "scene"
+if not scene_path.exists():
+    # Override the register_dir function to a harmless dummy
+    import moderngl_window.resources
+    moderngl_window.resources.register_dir = lambda *a, **k: None
+    print("[Info] Disabled moderngl_window resource registration (no scene folder).")
+# -------------------------------------------------------------------
 import moderngl_window
-from moderngl_window import geometry
+import moderngl
 from pyrr import Vector4, Vector3 as PyrrVector3, Quaternion as PyrrQuat, Matrix44
 import numpy as np
 
