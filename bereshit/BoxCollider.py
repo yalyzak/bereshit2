@@ -67,6 +67,46 @@ class BoxCollider:
         bounds.append([min_bound, max_bound])
         return bounds
 
+    def vertices(self):
+        center, size, rotation = self.parent.position, self.size, self.obj.quaternion.conjugate()
+        R = rotation.to_matrix3()
+        w, h, d = np.array(size) / 2
+        corners = np.array([
+            [-w, -h, -d],
+            [w, -h, -d],
+            [w, h, -d],
+            [-w, h, -d],
+            [-w, -h, d],
+            [w, -h, d],
+            [w, h, d],
+            [-w, h, d],
+        ])
+        rotated = corners @ R.T
+        return rotated + center.to_np()
+    def triangles(self):
+        vertices = self.vertices()
+        # --- Define triangles using vertex indices ---
+        # Each triplet = one triangle
+        tris_idx = [
+            # Front face (-Z)
+            [0, 1, 2], [0, 2, 3],
+            # Back face (+Z)
+            [4, 6, 5], [4, 7, 6],
+            # Left face (-X)
+            [0, 3, 7], [0, 7, 4],
+            # Right face (+X)
+            [1, 5, 6], [1, 6, 2],
+            # Bottom face (-Y)
+            [0, 4, 5], [0, 5, 1],
+            # Top face (+Y)
+            [3, 2, 6], [3, 6, 7],
+        ]
+
+        # --- Build triangle vertex arrays ---
+        triangles = [vertices[i] for i in tris_idx]
+        triangles = [np.array([vertices[a], vertices[b], vertices[c]]) for a, b, c in tris_idx]
+
+        return triangles
     def check_collision(self, other, single_point=False):
 
         other_collider = getattr(other, 'collider', other)
