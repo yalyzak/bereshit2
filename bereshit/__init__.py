@@ -7,5 +7,8 @@ from .Material import Material
 from .Camera import Camera
 from .MeshRander import MeshRander
 from .World import World
+from .FixJoint import FixJoint
+from .render import BereshitRenderer as Render
+from .Physics import Physics
 
-__all__ = ["Vector3", "Quaternion", "Object", "Rigidbody", "BoxCollider", "Material", "Camera", "MeshRander", "World"]
+__all__ = ["Vector3", "Quaternion", "Object", "Rigidbody", "BoxCollider", "Material", "Camera", "MeshRander", "World", "FixJoint", "Render"]
