@@ -54,7 +54,7 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60,Render=True,Fo
             if sleep_time > 0:
                 await asyncio.sleep(sleep_time)
 
-    def start_async_loop(Initialize=[False]):
+    def start_async_loop(Initialize=[True]):
         asyncio.run(main_logic(Initialize))
 
     if Render:
