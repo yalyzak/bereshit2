@@ -431,6 +431,7 @@ class World:
             rb.torque.z / rb.inertia.z if rb.inertia.z != 0 else 0
         )
         rb.angular_velocity += rb.angular_acceleration * dt
+        rb.angular_velocity *= rb.drag
         # 4.3) Integrate rotation
         ang_disp = rb.angular_velocity * dt \
                    + 0.5 * rb.angular_acceleration * dt * dt

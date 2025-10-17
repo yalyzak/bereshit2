@@ -49,10 +49,12 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         super().__init__(**kwargs)
         self.root_object = BereshitRenderer.root_object  # 👈 assign it here
         self.camera_obj = self.root_object.search_by_component('Camera')
+
         if not self.camera_obj:
             raise Exception("No camera object found")
-
         self.cam = self.camera_obj.Camera
+        self.cam.render = self
+        self.Initialize[0] = True
         self.fov = self.cam.FOV
         self.viewer_distance = self.cam.VIEWER_DISTANCE
         self.ortho_projection = Matrix44.orthogonal_projection(
@@ -261,15 +263,15 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def add_ui_rect(self, x, y, w, h, color=(1.0, 1.0, 1.0)):
         r, g, b = color
-        # Triangle-based quad
+        hw, hh = w / 2, h / 2
         vertices = np.array([
-            x, y, r, g, b,
-            x + w, y, r, g, b,
-            x + w, y + h, r, g, b,
+            x - hw, y - hh, r, g, b,
+            x + hw, y - hh, r, g, b,
+            x + hw, y + hh, r, g, b,
 
-            x, y, r, g, b,
-            x + w, y + h, r, g, b,
-            x, y + h, r, g, b,
+            x - hw, y - hh, r, g, b,
+            x + hw, y + hh, r, g, b,
+            x - hw, y + hh, r, g, b,
         ], dtype="f4")
         self.ui_elements.append(vertices)
 
@@ -366,6 +368,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         # --- Render UI on top ---
         self.render_ui()
 
-def run_renderer(root_object):
+def run_renderer(root_object, Initialize):
+    BereshitRenderer.Initialize = Initialize
     BereshitRenderer.root_object = root_object  # 👈 inject your object here
     moderngl_window.run_window_config(BereshitRenderer, args=['--window', 'glfw'])

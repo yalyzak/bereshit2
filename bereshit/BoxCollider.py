@@ -107,6 +107,97 @@ class BoxCollider:
         triangles = [np.array([vertices[a], vertices[b], vertices[c]]) for a, b, c in tris_idx]
 
         return triangles
+    def faces(self):
+        """
+        Returns the 6 faces of the box as arrays of 4 vertices each.
+        The vertex order for each face is counter-clockwise when looking at the face.
+        """
+        v = self.vertices()
+
+        # Define faces using vertex indices (each list = one face of 4 corners)
+        face_indices = [
+            # Front (-Z)
+            [0, 1, 2, 3],
+            # Back (+Z)
+            [4, 5, 6, 7],
+            # Left (-X)
+            [0, 3, 7, 4],
+            # Right (+X)
+            [1, 5, 6, 2],
+            # Bottom (-Y)
+            [0, 4, 5, 1],
+            # Top (+Y)
+            [3, 2, 6, 7],
+        ]
+
+        # Build the faces as arrays of vertex positions
+        faces = [np.array([v[i] for i in face]) for face in face_indices]
+        return faces
+
+    def Raycast(self, origin, direction, maxDistance=float('inf')):
+        def ray_box_intersect(orig, dir, box_min, box_max):
+            """
+            Ray-AABB intersection using the slab method.
+            orig: np.array([x, y, z]) ray origin
+            dir:  np.array([x, y, z]) ray direction
+            box_min: np.array([x, y, z]) minimum corner of box
+            box_max: np.array([x, y, z]) maximum corner of box
+            Returns: intersection point or None
+            """
+            tmin = (box_min - orig) / dir
+            tmax = (box_max - orig) / dir
+
+            # Handle negative directions by swapping
+            t1 = np.minimum(tmin, tmax)
+            t2 = np.maximum(tmin, tmax)
+
+            # Largest entering t and smallest exiting t
+            t_enter = np.max(t1)
+            t_exit = np.min(t2)
+
+            # If no intersection or box is behind ray
+            if t_exit < 0 or t_enter > t_exit:
+                return None
+
+            # Intersection point
+            hit_point = orig + dir * t_enter
+            return hit_point
+        def ray_obb_intersect(orig, dir, center, half_size, rotation_matrix):
+            """
+            Ray-OBB intersection.
+            orig, dir: world-space ray
+            center: np.array([x, y, z]) box center
+            half_size: np.array([hx, hy, hz])
+            rotation_matrix: 3x3 matrix of box orientation
+            Returns: intersection point or None
+            """
+
+            # Transform ray into box local space
+            local_orig = rotation_matrix.T @ (orig - center)
+            local_dir = rotation_matrix.T @ dir
+
+            # Box extents in local space
+            box_min = -half_size
+            box_max = half_size
+
+            hit_local = ray_box_intersect(local_orig, local_dir, box_min, box_max)
+            if hit_local is None:
+                return None
+
+            # Transform intersection point back to world space
+            hit_world = (rotation_matrix @ hit_local) + center
+            return hit_world
+        faces = self.faces()
+        dis = float('inf')
+        hit = None
+        for face in faces:
+            temp_hit = ray_obb_intersect(origin, direction, self.parent.position,)
+            if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
+                hit = temp_hit
+        return hit
+
+
+
     def check_collision(self, other, single_point=False):
 
         other_collider = getattr(other, 'collider', other)

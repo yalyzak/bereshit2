@@ -16,6 +16,7 @@ class Physics:
         self.direction = direction
         self.maxDistance = maxDistance
         # self.hit = hit if hit is not None else Raycast.RaycastHit()
+
     @staticmethod
     def Raycast(origin, direction, layerMask, maxDistance=float('inf')):
         def ray_triangle_intersect(orig, dir, triangle, eps=1e-90):
@@ -51,10 +52,14 @@ class Physics:
                 return hit_point  # intersection point
             else:
                 return None  # Line intersects but not a ray
+
         triangles = layerMask.triangles()
+
+
+        dis = float('inf')
+        hit = None
         for triangle in triangles:
-            hit = ray_triangle_intersect(origin, direction, triangle)
-            if hit:
-                return hit
-
-
+            temp_hit = ray_triangle_intersect(origin, direction, triangle)
+            if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
+                hit = temp_hit
+        return hit

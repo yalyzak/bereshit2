@@ -5,3 +5,4 @@ class Camera:
         self.FOV = FOV
         self.VIEWER_DISTANCE = VIEWER_DISTANCE
         self.shading = shading
+        self.render = None

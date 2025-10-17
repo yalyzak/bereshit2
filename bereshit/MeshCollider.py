@@ -9,6 +9,47 @@ class MeshCollider:
         self.is_trigger = is_trigger
         self.enter = False
 
+    def Raycast(self,origin, direction, layerMask, maxDistance=float('inf'):
+
+        def triangle_Raycast(orig, dir, triangle, eps=1e-90):
+            v0, v1, v2 = triangle
+            # Compute edges
+            edge1 = v1 - v0
+            edge2 = v2 - v0
+
+            # Begin calculating determinant
+            h = np.cross(dir, edge2)
+            a = np.dot(edge1, h)
+
+            if -eps < a < eps:
+                return None  # Ray is parallel to the triangle
+
+            f = 1.0 / a
+            s = orig - v0
+            u = f * np.dot(s, h)
+
+            if u < 0.0 or u > 1.0:
+                return None
+
+            q = np.cross(s, edge1)
+            v = f * np.dot(dir, q)
+
+            if v < 0.0 or u + v > 1.0:
+                return None
+
+            # Compute t to find intersection point
+            t = f * np.dot(edge2, q)
+            if t > eps:
+                hit_point = orig + dir * t
+                return hit_point  # intersection point
+            else:
+                return None  # Line intersects but not a ray
+        triangles = layerMask.triangles()
+        for triangle in triangles:
+            hit = triangle_Raycast(origin, direction, triangle)
+            if hit is not None:
+                return hit
+
     def generate_convex_hull_and_simplify(self, target_triangles=500):
         """
         Simplify a convex hull built from the given vertices using Open3D.

@@ -9,7 +9,10 @@ from bereshit import Object, render, World
 # import old_render as render
 
 
-def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60):
+def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60,Render=True,ForceRenderInitialize=True):
+    if not Render:
+        ForceRenderInitialize = False
+
     TARGET_FPS = 60
     # bereshit.dt = TARGET_FPS * 0.000165
 
@@ -20,15 +23,18 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60):
     if gizmos:
         hit_points = [Object(size=(0.1,0.1,0.1),position=(100,100,100),children=[Object(size=(0.1,0.1,0.1),position=(100,100,100)) for i in range(8)]) for i in range(8)]
         gizmos_container = Object(size=(0,0,0),children=hit_points)
-        world = World(children=scene + gizmos_container)
+        world = World(children=scene)
 
     else:
         world = World(children=scene)
-    async def main_logic():
+    async def main_logic(Initialize):
         start_wall_time = time.time()
         steps = 0
         # speed = 1  # real time slip
         # bereshit.dt = (10 / ((1 / dt) / 60) * speed)
+        while not Initialize[0]:
+            await asyncio.sleep(0.01)
+        print(Initialize[0])
         world.Start()
         while True:
             steps += 1
@@ -48,16 +54,22 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60):
             if sleep_time > 0:
                 await asyncio.sleep(sleep_time)
 
-    def start_async_loop():
-        asyncio.run(main_logic())
+    def start_async_loop(Initialize=[False]):
+        asyncio.run(main_logic(Initialize))
 
-    # if __name__ == "__main__":
-    # Initialize world
-    # world.reset_to_default()
-    # start_async_loop()
-    # Start async logic in a thread
-    logic_thread = threading.Thread(target=start_async_loop, daemon=True)
-    logic_thread.start()
+    if Render:
+        if ForceRenderInitialize:
+            Initialize = [False]
 
-    # Start rendering in main thread
-    render.run_renderer(world)
+            logic_thread = threading.Thread(target=start_async_loop, daemon=True,args=([Initialize]))
+            logic_thread.start()
+            # Start rendering in main thread
+            render.run_renderer(world,Initialize)
+        else:
+            logic_thread = threading.Thread(target=start_async_loop, daemon=True)
+            logic_thread.start()
+
+            # Start rendering in main thread
+            render.run_renderer(world)
+    else:
+        start_async_loop()
