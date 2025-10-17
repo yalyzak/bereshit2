@@ -69,7 +69,7 @@ class World:
                 if (rb11 is None or rb11.isKinematic) and (rb2 is None or rb2.isKinematic):
                     continue
 
-                result = obj1.collider.check_collision(obj2, single_point=False)
+                result = obj1.collider.check_collision(obj2, single_point=True)
                 if result is None:
                     continue
 
@@ -207,10 +207,10 @@ class World:
                     # rb2.isKinematic = True
 
                     if not rb1.isKinematic and not rb2.isKinematic:
-                        self.resolve_dynamic_collision(contact, J1, 0.1, flage)
+                        self.resolve_dynamic_collision(contact, J1, 0, flage)
                         self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
-                        self.resolve_kinematic_collision(contact, J1, 0.1, flage)
+                        self.resolve_kinematic_collision(contact, J1, 0, flage)
                         self.apply_friction_impulse(contact, n, J1)
 
         return contacts
@@ -431,7 +431,6 @@ class World:
             rb.torque.z / rb.inertia.z if rb.inertia.z != 0 else 0
         )
         rb.angular_velocity += rb.angular_acceleration * dt
-        rb.angular_velocity *= rb.drag
         # 4.3) Integrate rotation
         ang_disp = rb.angular_velocity * dt \
                    + 0.5 * rb.angular_acceleration * dt * dt
