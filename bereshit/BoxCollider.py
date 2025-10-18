@@ -158,18 +158,22 @@ class BoxCollider:
                     "rotation": face_R
                 })
         return faces
-    def Raycast(self, origin, direction, maxDistance=float('inf')):
-        def ray_box_intersect(orig, dir, box_min, box_max):
+       def Raycast(self, origin, direction, maxDistance=float('inf')):
+        def ray_box_intersect(orig, dir, box_min, box_max, eps=1e-8):
             """
             Ray-AABB intersection using the slab method.
             orig: np.array([x, y, z]) ray origin
             dir:  np.array([x, y, z]) ray direction
             box_min: np.array([x, y, z]) minimum corner of box
             box_max: np.array([x, y, z]) maximum corner of box
+            eps: small epsilon to avoid division by zero
             Returns: intersection point or None
             """
-            tmin = (box_min - orig) / dir
-            tmax = (box_max - orig) / dir
+            # Avoid division by zero by adding eps to near-zero directions
+            safe_dir = np.where(np.abs(dir) < eps, np.sign(dir) * eps + eps, dir)
+
+            tmin = (box_min - orig) / safe_dir
+            tmax = (box_max - orig) / safe_dir
 
             # Handle negative directions by swapping
             t1 = np.minimum(tmin, tmax)
@@ -186,6 +190,7 @@ class BoxCollider:
             # Intersection point
             hit_point = orig + dir * t_enter
             return hit_point
+
         def ray_obb_intersect(orig, dir, center, half_size, rotation_matrix):
             """
             Ray-OBB intersection.
@@ -213,22 +218,24 @@ class BoxCollider:
             return hit_world
 
         center = self.parent.position.to_np()
-        half_size = (self.parent.size/2).to_np()
+        half_size = (self.parent.size / 2).to_np()
         R = self.parent.quaternion.conjugate().to_matrix3()
 
-        faces = self.temp(center,half_size,R)
-
+        faces = self.temp(center, half_size, R)
 
         dis = float('inf')
         hit = None
         for face in faces:
             temp_hit = ray_obb_intersect(origin, direction,
-                                    face["center"],
-                                    np.array([*face["half_size"], 0]),  # make it 3D if needed
-                                    face["rotation"])
-            if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
-                hit = temp_hit
+                                         face["center"],
+                                         np.array([*face["half_size"], 0]),  # make it 3D if needed
+                                         face["rotation"])
+            if temp_hit is not None:
+                temp_dis = np.linalg.norm(temp_hit - origin)
+                if temp_dis < dis and temp_dis < maxDistance:
+                    hit = temp_hit
         return hit
+
 
 
 
@@ -819,4 +826,5 @@ class BoxCollider:
     def attach(self, owner_object):
         self.size = owner_object.size
         self.obj = owner_object
+
         return "collider"
