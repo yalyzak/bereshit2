@@ -19,47 +19,50 @@ class Physics:
 
     @staticmethod
     def Raycast(origin, direction, layerMask, maxDistance=float('inf')):
-        def ray_triangle_intersect(orig, dir, triangle, eps=1e-90):
-            v0, v1, v2 = triangle
-            # Compute edges
-            edge1 = v1 - v0
-            edge2 = v2 - v0
-
-            # Begin calculating determinant
-            h = np.cross(dir, edge2)
-            a = np.dot(edge1, h)
-
-            if -eps < a < eps:
-                return None  # Ray is parallel to the triangle
-
-            f = 1.0 / a
-            s = orig - v0
-            u = f * np.dot(s, h)
-
-            if u < 0.0 or u > 1.0:
-                return None
-
-            q = np.cross(s, edge1)
-            v = f * np.dot(dir, q)
-
-            if v < 0.0 or u + v > 1.0:
-                return None
-
-            # Compute t to find intersection point
-            t = f * np.dot(edge2, q)
-            if t > eps:
-                hit_point = orig + dir * t
-                return hit_point  # intersection point
-            else:
-                return None  # Line intersects but not a ray
-
-        triangles = layerMask.triangles()
-
-
-        dis = float('inf')
-        hit = None
-        for triangle in triangles:
-            temp_hit = ray_triangle_intersect(origin, direction, triangle)
-            if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
-                hit = temp_hit
+        if layerMask is not None:
+            hit = layerMask.Raycast(origin, direction, maxDistance)
         return hit
+        # def ray_triangle_intersect(orig, dir, triangle, eps=1e-90):
+        #     v0, v1, v2 = triangle
+        #     # Compute edges
+        #     edge1 = v1 - v0
+        #     edge2 = v2 - v0
+        #
+        #     # Begin calculating determinant
+        #     h = np.cross(dir, edge2)
+        #     a = np.dot(edge1, h)
+        #
+        #     if -eps < a < eps:
+        #         return None  # Ray is parallel to the triangle
+        #
+        #     f = 1.0 / a
+        #     s = orig - v0
+        #     u = f * np.dot(s, h)
+        #
+        #     if u < 0.0 or u > 1.0:
+        #         return None
+        #
+        #     q = np.cross(s, edge1)
+        #     v = f * np.dot(dir, q)
+        #
+        #     if v < 0.0 or u + v > 1.0:
+        #         return None
+        #
+        #     # Compute t to find intersection point
+        #     t = f * np.dot(edge2, q)
+        #     if t > eps:
+        #         hit_point = orig + dir * t
+        #         return hit_point  # intersection point
+        #     else:
+        #         return None  # Line intersects but not a ray
+        #
+        # triangles = layerMask.triangles()
+        #
+        #
+        # dis = float('inf')
+        # hit = None
+        # for triangle in triangles:
+        #     temp_hit = ray_triangle_intersect(origin, direction, triangle)
+        #     if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
+        #         hit = temp_hit
+        # return hit

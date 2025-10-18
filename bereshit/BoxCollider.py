@@ -108,6 +108,7 @@ class BoxCollider:
 
         return triangles
     def faces(self):
+
         """
         Returns the 6 faces of the box as arrays of 4 vertices each.
         The vertex order for each face is counter-clockwise when looking at the face.
@@ -133,7 +134,30 @@ class BoxCollider:
         # Build the faces as arrays of vertex positions
         faces = [np.array([v[i] for i in face]) for face in face_indices]
         return faces
+    def temp(self,center,half_size,R):
+        faces = []
+        axes = [R[:, 0], R[:, 1], R[:, 2]]  # local x, y, z directions
+        names = ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]
 
+        for i, axis in enumerate(axes):
+            for sign in [1, -1]:
+                # Face center: move from box center along the face normal
+                face_center = center + sign * axis * half_size[i]
+
+                # Half-size of face: drop the normal axis
+                face_half = np.delete(half_size, i)
+
+                # Build rotation matrix for the face (tangential axes)
+                tangential_axes = [axes[j] for j in range(3) if j != i]
+                face_R = np.column_stack(tangential_axes + [sign * axis])  # x,y,toward normal
+
+                faces.append({
+                    "name": f"{'+' if sign > 0 else '-'}{['X', 'Y', 'Z'][i]}",
+                    "center": face_center,
+                    "half_size": face_half,
+                    "rotation": face_R
+                })
+        return faces
     def Raycast(self, origin, direction, maxDistance=float('inf')):
         def ray_box_intersect(orig, dir, box_min, box_max):
             """
@@ -187,11 +211,21 @@ class BoxCollider:
             # Transform intersection point back to world space
             hit_world = (rotation_matrix @ hit_local) + center
             return hit_world
-        faces = self.faces()
+
+        center = self.parent.position.to_np()
+        half_size = (self.parent.size/2).to_np()
+        R = self.parent.quaternion.conjugate().to_matrix3()
+
+        faces = self.temp(center,half_size,R)
+
+
         dis = float('inf')
         hit = None
         for face in faces:
-            temp_hit = ray_obb_intersect(origin, direction, self.parent.position,)
+            temp_hit = ray_obb_intersect(origin, direction,
+                                    face["center"],
+                                    np.array([*face["half_size"], 0]),  # make it 3D if needed
+                                    face["rotation"])
             if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
                 hit = temp_hit
         return hit
