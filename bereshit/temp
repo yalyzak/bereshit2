@@ -1,1 +1,82 @@
+        def SAT():
+            def get_axes(rotation: Quaternion):
+                R = rotation.to_matrix3()  # 3x3 numpy array
 
+                right = Vector3(*R[:, 0]).normalized()
+                up = Vector3(*R[:, 1]).normalized()
+                forward = Vector3(*R[:, 2]).normalized()
+
+                return [right, up, forward]
+
+            def project_box(center, axes, half_sizes, axis):
+                projection_center = center.dot(axis)
+                radius = sum(abs(axis.dot(a)) * h for a, h in zip(axes, half_sizes))
+                return projection_center - radius, projection_center + radius
+
+            def overlap_on_axis(proj1, proj2):
+                return not (proj1[1] < proj2[0] or proj2[1] < proj1[0])
+
+            # --- SAT Collision Detection ---
+
+            a_center = self.obj.position
+            b_center = other_collider.obj.position
+
+            a_axes = get_axes(self.obj.quaternion.conjugate())
+            b_axes = get_axes(other_collider.obj.quaternion.conjugate())
+
+            a_half = self.obj.size * 0.5
+            b_half = other_collider.obj.size * 0.5
+
+            a_half_sizes = [a_half.x, a_half.y, a_half.z]
+            b_half_sizes = [b_half.x, b_half.y, b_half.z]
+
+            axes_to_test = []
+
+            # Add 3 axes of A
+            for i in range(3):
+                axes_to_test.append(("a", i, a_axes[i]))
+
+            # Add 3 axes of B
+            for i in range(3):
+                axes_to_test.append(("b", i, b_axes[i]))
+            #
+            # # Add 9 cross-product axes
+            # # Add 9 cross-product axes
+            # for i in range(3):
+            #     for j in range(3):
+            #         cross = a_axes[i].cross(b_axes[j])
+            #         if cross.magnitude() > 1e-6:
+            #             axis = cross.normalized()
+            #
+            #             # Check if this axis is nearly parallel to an existing axis
+            #             is_unique = True
+            #             for _, _, existing in axes_to_test:
+            #                 if abs(existing.dot(axis)) > 1 - 1e-6:  # almost parallel
+            #                     is_unique = False
+            #                     break
+            #
+            #             if is_unique:
+            #                 axes_to_test.append(("edge", (i, j), axis))
+
+            smallest_overlap = float('inf')
+            collision_axis = None
+            for axis_info in axes_to_test:
+                source, indices, axis = axis_info
+                proj_a = project_box(a_center, a_axes, a_half_sizes, axis)
+                proj_b = project_box(b_center, b_axes, b_half_sizes, axis)
+
+                if not overlap_on_axis(proj_a, proj_b):
+                    return None  # Separating axis found
+
+                overlap = min(proj_a[1], proj_b[1]) - max(proj_a[0], proj_b[0])
+                if overlap < smallest_overlap:  # or (overlap == smallest_overlap and source != 'edge')
+                    smallest_overlap = overlap
+                    collision_axis = axis
+                    collision_type = source
+                    collision_axis_indices = indices
+                # elif abs(overlap - smallest_overlap) < 1e-6 and source != 'edge':
+                #     smallest_overlap = overlap
+                #     collision_axis = axis
+                #     collision_type = source
+                #     collision_axis_indices = indices
+            return collision_axis, collision_type, collision_axis_indices
