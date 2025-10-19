@@ -1,1 +1,159 @@
+import socket
+import struct
+import threading
 
+
+class Server:
+    def __init__(self,port=5000):
+        self.clients = set()
+        # Create UDP socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(("0.0.0.0", port))
+        print("UDP Server listening on port 5000...")
+
+    def runServer(self):
+        print("Server thread started")
+        while True:
+            try:
+                data, addr = self.sock.recvfrom(1024)
+            except ConnectionResetError:
+                continue
+            except Exception as e:
+                print("Recv error:", e)
+                continue
+
+            if addr not in self.clients:
+                self.clients.add(addr)
+                print("New client:", addr)
+
+            try:
+                self.read(data, addr)
+            except Exception as e:
+                print(f"Bad packet from {addr}: {e}")
+
+    def read(self,data,addr):
+        if len(data) < 4:
+            raise ValueError("Packet too short")
+
+        # First 4 bytes = name length
+        name_len = struct.unpack("!I", data[:4])[0]
+        fmt = f"!I{name_len}s fff ffff fff"  # 6 floats total: pos(3) + vel(3)
+        expected_len = struct.calcsize(fmt)
+
+        if len(data) != expected_len:
+            raise ValueError(f"Bad packet length: got {len(data)}, expected {expected_len}")
+
+        unpacked = struct.unpack(fmt, data)
+        _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
+        print(name)
+        # Broadcast to all other clients
+        for other_addr in list(self.clients):
+            if other_addr != addr:
+                try:
+                    self.sock.sendto(data, other_addr)
+                except Exception as e:
+                    print(f"Error sending to {other_addr}: {e}")
+                    self.clients.discard(other_addr)
+
+    def Start(self):
+        logic_thread = threading.Thread(target=self.runServer, daemon=True)
+        logic_thread.start()
+import socket
+import struct
+from collections import deque
+from bereshit import World, Object, Rigidbody, BoxCollider, Vector3, Quaternion, MeshRander
+
+class Client:
+    def __init__(self, host="127.0.0.1", port=5000, data_objects=None):
+        # --- core UDP socket setup ---
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(False)
+        self.server_addr = (host, port)
+
+        # objects this client syncs
+        self.data_objects = data_objects or []
+
+        # message buffers
+        self.incoming = deque()   # stores raw bytes
+        self.outgoing = deque()   # stores raw bytes
+
+        self.Continer = None
+
+    def Start(self):
+        cube = Object()
+        cube.add_component(BoxCollider())
+        cube.add_component(Rigidbody(useGravity=True))
+        ServerContiner = Object(children=[cube])
+        ServerContiner.add_component(MeshRander(shape="empty"))
+        self.parent.world.add_child(ServerContiner)
+        self.Continer = ServerContiner
+
+    def send_data(self, msg: bytes):
+        """Queue a raw binary message to send."""
+        self.outgoing.append(msg)
+
+    def Update(self, dt=None):
+        # --- parse any received messages ---
+        msgs = self.get_messages()
+        for m in msgs:
+            # Update container position
+            self.Continer.children[0].position = Vector3(*m["position"])
+            self.Continer.children[0].quaternion = Quaternion(*m["quaternion"])
+
+            self.Continer.children[0].Rigidbody.velocity = Vector3(*m["velocity"])
+
+
+        # --- prepare and queue outgoing data ---
+        for obj in self.data_objects:
+            name_bytes = obj.name.encode()
+            msg = struct.pack(
+                f"!I{len(name_bytes)}s fff ffff fff",
+                len(name_bytes), name_bytes,
+                obj.position.x, obj.position.y, obj.position.z,
+                obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w,
+
+                obj.Rigidbody.velocity.x, obj.Rigidbody.velocity.y, obj.Rigidbody.velocity.z,
+
+            )
+            self.outgoing.append(msg)
+
+        # --- send outgoing ---
+        try:
+            while self.outgoing:
+                msg = self.outgoing.popleft()
+                self.sock.sendto(msg, self.server_addr)
+        except BlockingIOError:
+            # socket buffer full, keep message
+            self.outgoing.appendleft(msg)
+
+        # --- receive incoming ---
+        try:
+            data, _ = self.sock.recvfrom(1024)
+            if data:
+                # store raw binary
+                self.incoming.append(data)
+        except BlockingIOError:
+            pass  # nothing to read
+
+    def get_messages(self):
+        """Retrieve and decode all received messages this frame."""
+        decoded = []
+        while self.incoming:
+            m = self.incoming.popleft()
+
+            # first 4 bytes = name length
+            name_len = struct.unpack("!I", m[:4])[0]
+
+            # rebuild format string
+            fmt = f"!I{name_len}s fff ffff fff"
+            unpacked = struct.unpack(fmt, m)
+
+            _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
+            decoded.append({
+                "name": name.decode(),
+                "position": (x, y, z),
+                "quaternion": (xq, yq, zq, wq),
+                "velocity": (vx, vy, vz),
+
+            })
+        return decoded
