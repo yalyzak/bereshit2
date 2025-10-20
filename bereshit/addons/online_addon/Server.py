@@ -11,6 +11,17 @@ print("UDP Server listening on port 5000...")
 hostname = socket.gethostname()
 IPAddr = socket.gethostbyname(hostname)
 print(f"Your Computer's Local IP Address is: {IPAddr}")
+def get_ipv4():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # connect() doesn't actually send packets
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    finally:
+        s.close()
+    return ip
+
+print("Your computer's IPv4 address is:", get_ipv4())
 while True:
     try:
         data, addr = sock.recvfrom(1024)
@@ -40,7 +51,7 @@ while True:
 
         unpacked = struct.unpack(fmt, data)
         _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
-        print(x,y,z)
+
 
         # Broadcast to all other clients
         for other_addr in list(clients):

@@ -35,6 +35,7 @@ class Client:
     def Update(self, dt=None):
         # --- parse any received messages ---
         msgs = self.get_messages()
+
         for m in msgs:
             # Update container position
             self.Continer.children[0].position = Vector3(*m["position"])
