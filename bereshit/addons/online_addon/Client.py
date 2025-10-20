@@ -25,7 +25,7 @@ class Client:
         cube.add_component(Rigidbody(useGravity=True))
         ServerContiner = Object(children=[cube])
         ServerContiner.add_component(MeshRander(shape="empty"))
-        self.parent.world.add_child(ServerContiner)
+        self.parent.add_child(ServerContiner)
         self.Continer = ServerContiner
 
     def send_data(self, msg: bytes):

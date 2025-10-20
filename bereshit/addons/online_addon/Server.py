@@ -8,7 +8,9 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", 5000))
 
 print("UDP Server listening on port 5000...")
-
+hostname = socket.gethostname()
+IPAddr = socket.gethostbyname(hostname)
+print(f"Your Computer's Local IP Address is: {IPAddr}")
 while True:
     try:
         data, addr = sock.recvfrom(1024)
@@ -38,7 +40,7 @@ while True:
 
         unpacked = struct.unpack(fmt, data)
         _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
-
+        print(x,y,z)
 
         # Broadcast to all other clients
         for other_addr in list(clients):
