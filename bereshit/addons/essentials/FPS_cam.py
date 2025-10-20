@@ -8,7 +8,7 @@ from bereshit import Quaternion,Vector3,MeshRander
 CENTER_X = 960
 CENTER_Y = 540
 sensitivity = 0.1  # adjust to your liking
-class rotate:
+class FPS_cam:
     def __init__(self):
         self.total_pitch = 0.0
         self.total_yaw = 0.0
@@ -19,9 +19,9 @@ class rotate:
         dx = x - CENTER_X
         dy = y - CENTER_Y
 
-        sensitivity = 0.1
-        self.total_yaw -= dx * sensitivity * dt
-        self.total_pitch += dy * sensitivity * dt
+        sensitivity = 0.001
+        self.total_yaw -= dx * sensitivity
+        self.total_pitch += dy * sensitivity
         max_yaw = math.radians(90)
         min_yaw = math.radians(-90)
 

@@ -54,7 +54,7 @@ class debug:
         # e_total = total_energy(self.parent)# + total_energy(self.other)
         # print(e_total)
         # print((self.parent.position-self.other.position).normalized().to_np())
-        print(self.parent.Rigidbody.velocity.y)
+        print(self.parent.position)
 
         # if self.other.position.y <= 0 or self.parent.position.y <= 0:
         #     exit()
