@@ -4,14 +4,16 @@ from collections import deque
 from bereshit import World, Object, Rigidbody, BoxCollider, Vector3, Quaternion, MeshRander
 
 class Client:
-    def __init__(self, host, port, data_objects=None):
+    def __init__(self, host, port, data_objects=None,user_name=None):
         # --- core UDP socket setup ---
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(False)
         self.server_addr = (host, port)
-
+        self.players\
+            = set()
         # objects this client syncs
         self.data_objects = data_objects or []
+        self.user_name = user_name or ""
 
         # message buffers
         self.incoming = deque()   # stores raw bytes
@@ -46,7 +48,7 @@ class Client:
 
         # --- prepare and queue outgoing data ---
         for obj in self.data_objects:
-            name_bytes = obj.name.encode()
+            name_bytes = self.user_name.encode()
             msg = struct.pack(
                 f"!I{len(name_bytes)}s fff ffff fff",
                 len(name_bytes), name_bytes,
@@ -88,8 +90,9 @@ class Client:
             # rebuild format string
             fmt = f"!I{name_len}s fff ffff fff"
             unpacked = struct.unpack(fmt, m)
-
             _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = unpacked
+            print(name)
+
             decoded.append({
                 "name": name.decode(),
                 "position": (x, y, z),
