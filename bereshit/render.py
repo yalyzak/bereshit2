@@ -61,64 +61,42 @@ class BereshitRenderer(moderngl_window.WindowConfig):
             0, self.wnd.size[0], 0, self.wnd.size[1], -1.0, 1.0
         )
         self.ui_vbo = self.ctx.buffer(reserve=20 * 6 * 64)  # ~64 quads
+        self.text_shader = self.ctx.program(
+            vertex_shader=open("bereshit/shaders/ui_text.vert").read(),
+            fragment_shader=open("bereshit/shaders/ui_text.frag").read(),
+        )
+        self.text_shader["screen_size"].value = self.wnd.size[0], self.wnd.size[1]
+        self.text_shader["color"].value = (1.0, 1.0, 1.0, 1.0)
 
+        # --- Create geometry buffers ---
+        self.text_vbo = self.ctx.buffer(reserve=4 * 4 * 4)  # x, y, u, v
+        self.text_vao = self.ctx.vertex_array(
+            self.text_shader,
+            [(self.text_vbo, "2f 2f", "in_pos", "in_uv")]
+        )
         # Simple UI shader
         self.ui_prog = self.ctx.program(
-            vertex_shader="""
-                #version 330
-                in vec2 in_position;
-                in vec3 in_color;
-                uniform mat4 ortho;
-                out vec3 v_color;
-                void main() {
-                    gl_Position = ortho * vec4(in_position, 0.0, 1.0);
-                    v_color = in_color;
-                }
-            """,
-            fragment_shader="""
-                #version 330
-                in vec3 v_color;
-                out vec4 fragColor;
-                void main() {
-                    fragColor = vec4(v_color, 1.0);
-                }
-            """
-        )
+            vertex_shader=open("bereshit/shaders/ui_prog.vert").read(),
+            fragment_shader=open("bereshit/shaders/ui_fragment_shader.vert").read())
         self.ui_vao = self.ctx.vertex_array(
             self.ui_prog,
             [(self.ui_vbo, "2f 3f", "in_position", "in_color")]
         )
 
-
         # Store UI elements to draw
         self.ui_elements = []
-        self.prog = self.ctx.program(
-            vertex_shader='''
-                      #version 330
-                      uniform mat4 model;
-                      uniform mat4 view;
-                      uniform mat4 projection;
-                      in vec3 in_position;
-                      void main() {
-                          gl_Position = projection * view * model * vec4(in_position, 1.0);
-                      }
-                      ''',
-            fragment_shader='''
-                      #version 330
-                      out vec4 f_color;
-                      uniform vec3 color;
-                      void main() {
-                          f_color = vec4(color, 1.0);
-                      }
-                      '''
-
-        )
-
+        self.wire_prog = self.ctx.program(
+            vertex_shader=open("bereshit/shaders/wire_vertex_shader.vert").read(),
+            fragment_shader=open("bereshit/shaders/wire_fragment_shader.vert").read())
+        self.solid_prog = self.ctx.program(
+            vertex_shader=open("bereshit/shaders/solid_vertex_shader.vert").read(),
+            fragment_shader=open("bereshit/shaders/solid_fragment_shader.vert").read())
         self.view = Matrix44.identity()
         self.projection = Matrix44.perspective_projection(self.fov, self.wnd.aspect_ratio, 0.1, 1000.0)
 
         self.meshes = []
         self.prepare_meshes()
+
 
     def prepare_meshes(self):
         shading = self.cam.shading
@@ -144,7 +122,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     'obj': obj,
                     'vbo': vao,
                     'vao': self.ctx.vertex_array(
-                        self.prog,
+                        self.wire_prog,
                         [(vao, '3f', 'in_position')],
                     ),
                     'len': len(lines),
@@ -167,8 +145,8 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     vbo = np.array(triangles, dtype='f4')
                     vao_buffer = self.ctx.buffer(vbo.tobytes())
                     vao = self.ctx.vertex_array(
-                        self.prog,
-                        [(vao_buffer, "3f", "aPos")]  # only position
+                        self.solid_prog,
+                        [(vao_buffer, "3f", "in_position")]  # only position
                     )
 
                     self.meshes.append({
@@ -201,7 +179,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     'obj': obj,
                     'vbo': vao,
                     'vao': self.ctx.vertex_array(
-                        self.prog,
+                        self.wire_prog,
                         [(vao, '3f', 'in_position')],
                     ),
                     'len': len(lines),
@@ -212,7 +190,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     continue
 
                 # Convert vertices to numpy (scaled and centered)
-                verts = [(v * obj.size * 0.5).to_np() for v in obj.Mesh.vertices]
+                verts = [(v * obj.size * 0.25).to_np() for v in obj.Mesh.vertices]
 
                 # Build triangle vertex list
                 triangles = []
@@ -224,7 +202,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     vbo = np.array(triangles, dtype='f4')
                     vao_buffer = self.ctx.buffer(vbo.tobytes())
                     vao = self.ctx.vertex_array(
-                        self.prog,
+                        self.solid_prog,
                         [(vao_buffer, "3f", "aPos")]  # only position
                     )
 
@@ -343,19 +321,33 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     @ Matrix44.from_quaternion(PyrrQuat([rot.x, rot.y, rot.z, rot.w]))
                     @ Matrix44.from_translation(pos)
             )
-            # @ Matrix44.from_scale(size)
-            self.prog['model'].write(model.astype('f4').tobytes())
-            self.prog['view'].write(self.view.astype('f4').tobytes())
-            self.prog['projection'].write(self.projection.astype('f4').tobytes())
-            # self.prog['lightPos'].value = cam_pos  # your light source coordinates
-
-            color = obj.material.color if hasattr(obj.material, 'color') else (1.0, 1.0, 1.0)
-            self.prog['color'].value = color
             if shading == "wire":
                 item['vao'].render(mode=moderngl.LINES, vertices=item['len'])
+                self.wire_prog['model'].write(model.astype('f4').tobytes())
+                self.wire_prog['view'].write(self.view.astype('f4').tobytes())
+                self.wire_prog['projection'].write(self.projection.astype('f4').tobytes())
+                # self.prog['lightPos'].value = cam_pos  # your light source coordinates
+
+                color = obj.material.color if hasattr(obj.material, 'color') else (1.0, 1.0, 1.0)
+                self.wire_prog['color'].value = color
             elif shading == "solid":
-                item['vao'].render(mode=moderngl.TRIANGLES, vertices=item['len'] // 3)
-                # Big red box (covering most of the screen)
+                # Enable depth test
+                self.ctx.enable(moderngl.DEPTH_TEST)
+
+                # Set uniforms before drawing
+                self.solid_prog['model'].write(model.astype('f4').tobytes())
+                self.solid_prog['view'].write(self.view.astype('f4').tobytes())
+                self.solid_prog['projection'].write(self.projection.astype('f4').tobytes())
+
+                self.solid_prog['light_pos'].value = cam_pos
+
+                self.solid_prog['light_color'].value = (1.0, 1.0, 1.0)
+                color = obj.material.color if hasattr(obj.material, 'color') else (1.0, 1.0, 1.0)
+                self.solid_prog['object_color'].value = color
+                self.solid_prog['view_pos'].value = tuple(cam_pos)
+
+                # Render as filled triangles
+                item['vao'].render(mode=moderngl.TRIANGLES, vertices=item['len'])
         # Desired rectangle size
         rect_width = 400
         rect_height = 300

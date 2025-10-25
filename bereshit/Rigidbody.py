@@ -71,7 +71,7 @@ class Rigidbody:
 
         if ContactPoint is not None:
             # r is the lever arm (vector from center of mass to contact point)
-            r = ContactPoint - self.parent.position
+            r = self.parent.position - ContactPoint
             # torque = r × F
             self.torque += r.cross(force)
 
