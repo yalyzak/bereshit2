@@ -5,8 +5,10 @@ from bereshit.Quaternion import Quaternion
 
 
 class BoxCollider:
-    def __init__(self, size=Vector3(1, 1, 1), object_pointer=None, is_trigger=False):
+    def __init__(self, size=None, rotation=None, object_pointer=None, is_trigger=False):
         self.size = size
+        self.rotation = rotation
+
         self.obj = object_pointer
         self.is_trigger = is_trigger
         self.enter = False
@@ -783,7 +785,15 @@ class BoxCollider:
             hit = self.Raycast(ver[i], vector / norm, maxDistance=norm)
             if hit is not None:
                 hits.add((tuple(hit), -collision_axis, 0))
-
+        ver = self.vertices()
+        for i in range(len(ver)):
+            vector = ver[(i + 1) % 8] - ver[i]
+            norm = np.linalg.norm(vector)
+            hit = other_collider.Raycast(ver[i], vector / norm, maxDistance=norm)
+            if hit is not None:
+                hits.add((tuple(hit), collision_axis, 0))
+        # if hits == set():
+        #     return None
         return list(hits)
 
         def average_contact_data(contact_points):
@@ -828,6 +838,11 @@ class BoxCollider:
         return contact_points, gizmos, ref
 
     def attach(self, owner_object):
-        self.size = owner_object.size
+        if self.size == None:
+            self.size = owner_object.size
+
+        if self.rotation == None:
+            self.rotation = owner_object.rotation
+
         self.obj = owner_object
         return "collider"
