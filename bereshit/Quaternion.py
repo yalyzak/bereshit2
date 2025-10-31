@@ -152,9 +152,9 @@ class Quaternion:
 
     @classmethod
     def euler(cls, vec3):  # vec3 = Vector3(roll, pitch, yaw)
-        roll = vec3.x
-        pitch = vec3.y
-        yaw = vec3.z
+        roll = math.radians(vec3.x)
+        pitch = math.radians(vec3.y)
+        yaw = math.radians(vec3.z)
 
         c1 = math.cos(yaw / 2)
         s1 = math.sin(yaw / 2)
