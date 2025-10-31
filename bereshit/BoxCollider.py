@@ -2,11 +2,13 @@ import numpy as np
 
 from bereshit.Vector3 import Vector3
 from bereshit.Quaternion import Quaternion
-
+from bereshit.Physics import RaycastHit
 
 class BoxCollider:
-    def __init__(self, size=Vector3(1, 1, 1), object_pointer=None, is_trigger=False):
+    def __init__(self, size=None, rotation=None, object_pointer=None, is_trigger=False):
         self.size = size
+        self.rotation = rotation
+
         self.obj = object_pointer
         self.is_trigger = is_trigger
         self.enter = False
@@ -158,48 +160,42 @@ class BoxCollider:
                     "rotation": face_R
                 })
         return faces
-    def Raycast(self, origin, direction, maxDistance=float('inf')):
+    def Raycast(self, origin, direction, maxDistance=float('inf'),hit=None):
+        import numpy as np
+
         def ray_box_intersect(orig, dir, box_min, box_max, eps=1e-8):
             """
             Ray-AABB intersection using the slab method.
-            orig: np.array([x, y, z]) ray origin
-            dir:  np.array([x, y, z]) ray direction
-            box_min: np.array([x, y, z]) minimum corner of box
-            box_max: np.array([x, y, z]) maximum corner of box
-            eps: small epsilon to avoid division by zero
-            Returns: intersection point or None
+            Returns: (hit_point_local, hit_normal_local) or (None, None)
             """
-            # Avoid division by zero by adding eps to near-zero directions
             safe_dir = np.where(np.abs(dir) < eps, np.sign(dir) * eps + eps, dir)
 
             tmin = (box_min - orig) / safe_dir
             tmax = (box_max - orig) / safe_dir
 
-            # Handle negative directions by swapping
             t1 = np.minimum(tmin, tmax)
             t2 = np.maximum(tmin, tmax)
 
-            # Largest entering t and smallest exiting t
             t_enter = np.max(t1)
             t_exit = np.min(t2)
 
-            # If no intersection or box is behind ray
             if t_exit < 0 or t_enter > t_exit:
-                return None
+                return None, None
 
-            # Intersection point
             hit_point = orig + dir * t_enter
-            return hit_point
+
+            # Compute which axis caused the max t_enter (that’s the face hit)
+            axis = np.argmax(t1)
+            normal = np.zeros(3)
+            normal[axis] = -1.0 if dir[axis] > 0 else 1.0
+
+            return hit_point, normal
+
         def ray_obb_intersect(orig, dir, center, half_size, rotation_matrix):
             """
             Ray-OBB intersection.
-            orig, dir: world-space ray
-            center: np.array([x, y, z]) box center
-            half_size: np.array([hx, hy, hz])
-            rotation_matrix: 3x3 matrix of box orientation
-            Returns: intersection point or None
+            Returns: (hit_world, normal_world) or (None, None)
             """
-
             # Transform ray into box local space
             local_orig = rotation_matrix.T @ (orig - center)
             local_dir = rotation_matrix.T @ dir
@@ -208,13 +204,16 @@ class BoxCollider:
             box_min = -half_size
             box_max = half_size
 
-            hit_local = ray_box_intersect(local_orig, local_dir, box_min, box_max)
+            hit_local, normal_local = ray_box_intersect(local_orig, local_dir, box_min, box_max)
             if hit_local is None:
                 return None
 
-            # Transform intersection point back to world space
+            # Transform intersection and normal back to world space
             hit_world = (rotation_matrix @ hit_local) + center
-            return hit_world
+            normal_world = rotation_matrix @ normal_local
+            normal_world /= np.linalg.norm(normal_world)
+
+            return RaycastHit(hit_world,normal_world)
 
         center = self.parent.position.to_np()
         half_size = (self.parent.size/2).to_np()
@@ -224,14 +223,19 @@ class BoxCollider:
 
 
         dis = float('inf')
-        hit = None
+        hit = RaycastHit()
         for face in faces:
             temp_hit = ray_obb_intersect(origin, direction,
                                     face["center"],
                                     np.array([*face["half_size"], 0]),  # make it 3D if needed
                                     face["rotation"])
-            if temp_hit is not None and np.linalg.norm(temp_hit - origin) < dis:
-                hit = temp_hit
+
+            if temp_hit is not None:
+                temp_dis = np.linalg.norm(temp_hit.point - origin)
+                if temp_dis < dis and temp_dis < maxDistance:
+                    hit.distance = temp_dis
+                    hit.point = temp_hit.point
+                    hit.normal = temp_hit.normal
         return hit
 
 
@@ -684,100 +688,111 @@ class BoxCollider:
         def overlap_on_axis(proj1, proj2):
             return not (proj1[1] < proj2[0] or proj2[1] < proj1[0])
 
-        # --- SAT Collision Detection ---
+        def SAT():
+            def get_axes(rotation: Quaternion):
+                R = rotation.to_matrix3()  # 3x3 numpy array
 
-        a_center = self.obj.position
-        b_center = other_collider.obj.position
+                right = Vector3(*R[:, 0]).normalized()
+                up = Vector3(*R[:, 1]).normalized()
+                forward = Vector3(*R[:, 2]).normalized()
 
-        a_axes = get_axes(self.obj.quaternion.conjugate())
-        b_axes = get_axes(other_collider.obj.quaternion.conjugate())
+                return [right, up, forward]
 
-        a_half = self.obj.size * 0.5
-        b_half = other_collider.obj.size * 0.5
+            def project_box(center, axes, half_sizes, axis):
+                projection_center = center.dot(axis)
+                radius = sum(abs(axis.dot(a)) * h for a, h in zip(axes, half_sizes))
+                return projection_center - radius, projection_center + radius
 
-        a_half_sizes = [a_half.x, a_half.y, a_half.z]
-        b_half_sizes = [b_half.x, b_half.y, b_half.z]
+            def overlap_on_axis(proj1, proj2):
+                return not (proj1[1] < proj2[0] or proj2[1] < proj1[0])
 
-        axes_to_test = []
+            # --- SAT Collision Detection ---
 
-        # Add 3 axes of A
-        for i in range(3):
-            axes_to_test.append(("a", i, a_axes[i]))
+            a_center = self.obj.position
+            b_center = other_collider.obj.position
 
-        # Add 3 axes of B
-        for i in range(3):
-            axes_to_test.append(("b", i, b_axes[i]))
-        #
-        # # Add 9 cross-product axes
-        # # Add 9 cross-product axes
-        # for i in range(3):
-        #     for j in range(3):
-        #         cross = a_axes[i].cross(b_axes[j])
-        #         if cross.magnitude() > 1e-6:
-        #             axis = cross.normalized()
-        #
-        #             # Check if this axis is nearly parallel to an existing axis
-        #             is_unique = True
-        #             for _, _, existing in axes_to_test:
-        #                 if abs(existing.dot(axis)) > 1 - 1e-6:  # almost parallel
-        #                     is_unique = False
-        #                     break
-        #
-        #             if is_unique:
-        #                 axes_to_test.append(("edge", (i, j), axis))
+            a_axes = get_axes(self.obj.quaternion.conjugate())
+            b_axes = get_axes(other_collider.obj.quaternion.conjugate())
 
-        smallest_overlap = float('inf')
-        collision_axis = None
-        for axis_info in axes_to_test:
-            source, indices, axis = axis_info
-            proj_a = project_box(a_center, a_axes, a_half_sizes, axis)
-            proj_b = project_box(b_center, b_axes, b_half_sizes, axis)
+            a_half = self.obj.size * 0.5
+            b_half = other_collider.obj.size * 0.5
 
-            if not overlap_on_axis(proj_a, proj_b):
-                return None  # Separating axis found
+            a_half_sizes = [a_half.x, a_half.y, a_half.z]
+            b_half_sizes = [b_half.x, b_half.y, b_half.z]
 
-            overlap = min(proj_a[1], proj_b[1]) - max(proj_a[0], proj_b[0])
-            if overlap < smallest_overlap:  # or (overlap == smallest_overlap and source != 'edge')
-                smallest_overlap = overlap
-                collision_axis = axis
-                collision_type = source
-                collision_axis_indices = indices
-            # elif abs(overlap - smallest_overlap) < 1e-6 and source != 'edge':
-            #     smallest_overlap = overlap
-            #     collision_axis = axis
-            #     collision_type = source
-            #     collision_axis_indices = indices
-        # print(source)
-        if collision_type in ("a", "b"):
-            if collision_type == "a":
-                ref_center, ref_axes, ref_half = a_center, a_axes, a_half_sizes
-                inc_center, inc_axes, inc_half = b_center, b_axes, b_half_sizes
-                normal_axis = collision_axis_indices
-                ref = (self.parent.Rigidbody, other_collider.parent.Rigidbody)
+            axes_to_test = []
 
-            else:
-                print("G")
-                ref = (other_collider.parent.Rigidbody, self.parent.Rigidbody)
+            # Add 3 axes of A
+            for i in range(3):
+                axes_to_test.append(("a", i, a_axes[i]))
 
-                normal_axis = collision_axis_indices
-                ref_center, ref_axes, ref_half = b_center, b_axes, b_half_sizes
-                inc_center, inc_axes, inc_half = a_center, a_axes, a_half_sizes
+            # Add 3 axes of B
+            for i in range(3):
+                axes_to_test.append(("b", i, b_axes[i]))
+            #
+            # # Add 9 cross-product axes
+            # # Add 9 cross-product axes
+            # for i in range(3):
+            #     for j in range(3):
+            #         cross = a_axes[i].cross(b_axes[j])
+            #         if cross.magnitude() > 1e-6:
+            #             axis = cross.normalized()
+            #
+            #             # Check if this axis is nearly parallel to an existing axis
+            #             is_unique = True
+            #             for _, _, existing in axes_to_test:
+            #                 if abs(existing.dot(axis)) > 1 - 1e-6:  # almost parallel
+            #                     is_unique = False
+            #                     break
+            #
+            #             if is_unique:
+            #                 axes_to_test.append(("edge", (i, j), axis))
 
-            contact_points, gizmos = generate_face_to_face_contact(
-                ref_center, ref_axes, ref_half,
-                inc_center, inc_axes, inc_half,
-                normal_axis, collision_axis, smallest_overlap, ref[0]
-            )
-        elif collision_type == "edge":
-            # i, j = collision_axis_indices  # from your SAT loop
-            # contact_points, gizmos = generate_edge_to_edge_contact(
-            #     a_center, a_axes, a_half_sizes,
-            #     b_center, b_axes, b_half_sizes,
-            #     (i, j), collision_axis, smallest_overlap
-            # )
-            print("gg")
+            smallest_overlap = float('inf')
+            collision_axis = None
+            for axis_info in axes_to_test:
+                source, indices, axis = axis_info
+                proj_a = project_box(a_center, a_axes, a_half_sizes, axis)
+                proj_b = project_box(b_center, b_axes, b_half_sizes, axis)
+
+                if not overlap_on_axis(proj_a, proj_b):
+                    return None  # Separating axis found
+
+                overlap = min(proj_a[1], proj_b[1]) - max(proj_a[0], proj_b[0])
+                if overlap < smallest_overlap:  # or (overlap == smallest_overlap and source != 'edge')
+                    smallest_overlap = overlap
+                    collision_axis = axis
+                    collision_type = source
+                    collision_axis_indices = indices
+                # elif abs(overlap - smallest_overlap) < 1e-6 and source != 'edge':
+                #     smallest_overlap = overlap
+                #     collision_axis = axis
+                #     collision_type = source
+                #     collision_axis_indices = indices
+            return collision_axis, collision_type, collision_axis_indices
+
+        result = SAT()
+        if result is None:
             return None
-            # exit()
+        collision_axis, collision_type, collision_axis_indices = result
+        hits = set()
+        ver = other_collider.vertices()
+        for i in range(len(ver)):
+            vector = ver[(i + 1) % 8] - ver[i]
+            norm = np.linalg.norm(vector)
+            hit = self.Raycast(ver[i], vector / norm, maxDistance=norm)
+            if hit.point is not None:
+                hits.add((tuple(hit.point), -collision_axis, 0))
+        ver = self.vertices()
+        for i in range(len(ver)):
+            vector = ver[(i + 1) % 8] - ver[i]
+            norm = np.linalg.norm(vector)
+            hit = other_collider.Raycast(ver[i], vector / norm, maxDistance=norm)
+            if hit.point is not None:
+                hits.add((tuple(hit.point), -collision_axis, 0))
+        # if hits == set():
+        #     return None
+        contact_points = list(hits)
 
         def average_contact_data(contact_points):
             if not contact_points:
@@ -818,9 +833,14 @@ class BoxCollider:
         else:
             other_collider.OnCollisionStay(self)
 
-        return contact_points, gizmos, ref
+        return contact_points
 
     def attach(self, owner_object):
-        self.size = owner_object.size
+        if self.size == None:
+            self.size = owner_object.size
+
+        if self.rotation == None:
+            self.rotation = owner_object.rotation
+
         self.obj = owner_object
         return "collider"

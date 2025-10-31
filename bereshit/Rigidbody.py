@@ -84,10 +84,15 @@ class Rigidbody:
         self.forward = owner_object.quaternion.rotate(owner_object.position)
         EPSILON = 1e-8  # Small value to avoid division by zero
 
+        hx = owner_object.size.x / 2
+        hy = owner_object.size.y
+        hz = owner_object.size.z
+
         self.inertia = Vector3(
-            (1 / 12) * self.mass * (owner_object.size.y ** 2 + owner_object.size.z ** 2),  # I_x
-            (1 / 12) * self.mass * (owner_object.size.x ** 2 + owner_object.size.z ** 2),  # I_y
-            (1 / 12) * self.mass * (owner_object.size.x ** 2 + owner_object.size.y ** 2)  # I_z
+            (1 / 12) * self.mass * (hy ** 2 + hz ** 2),  # I_x (unchanged)
+            (1 / 12) * self.mass * (hx * 2) ** 2 + self.mass * (hx) ** 2 + (1 / 12) * self.mass * (hz ** 2),
+            # simplified below
+            (1 / 12) * self.mass * (hx * 2) ** 2 + self.mass * (hx) ** 2 + (1 / 12) * self.mass * (hy ** 2)
         )
 
         def safe_inverse(value):

@@ -3,13 +3,13 @@ import threading
 import time
 # from builtins import range
 
-from bereshit import Object, render, World
+from bereshit import Object, render, World,Vector3
 
 
 # import old_render as render
 
 
-def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60,Render=True,ForceRenderInitialize=True):
+def run(scene,speed=1, gizmos=False, scriptRefreshRate=60,tick=1/60, Render=True, ForceRenderInitialize=True, gravity=Vector3(0,-9.8,0)):
     if not Render:
         ForceRenderInitialize = False
 
@@ -23,10 +23,10 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60,Render=True,Fo
     if gizmos:
         hit_points = [Object(size=(0.1,0.1,0.1),position=(100,100,100),children=[Object(size=(0.1,0.1,0.1),position=(100,100,100)) for i in range(8)]) for i in range(8)]
         gizmos_container = Object(size=(0,0,0),children=hit_points)
-        world = World(children=scene)
+        world = World(children=scene+[gizmos_container],gizmos=gizmos_container,gravity=gravity)
 
     else:
-        world = World(children=scene)
+        world = World(children=scene,gravity=gravity)
     async def main_logic(Initialize):
         start_wall_time = time.time()
         steps = 0
@@ -34,7 +34,6 @@ def run(scene,speed=1,gizmos=False,scriptRefreshRate=60,tick=1/60,Render=True,Fo
         # bereshit.dt = (10 / ((1 / dt) / 60) * speed)
         while not Initialize[0]:
             await asyncio.sleep(0.01)
-        print(Initialize[0])
         world.Start()
         while True:
             steps += 1

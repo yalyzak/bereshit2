@@ -4,11 +4,20 @@ from math import sqrt
 from dataclasses import dataclass
 
 
-@dataclass
+# @dataclass
 class Vector3:
-    x: float = 0
-    y: float = 0
-    z: float = 0
+    # x: float = 0
+    # y: float = 0
+    # z: float = 0
+    def __init__(self,x=0,y=0,z=0):
+        if type(x) == tuple and len(x) == 3:
+            self.x = x[0]
+            self.y = x[1]
+            self.z = x[2]
+        else:
+            self.x = x
+            self.y = y
+            self.z = z
 
     def floor(self):
         factor = 10 ** 5

@@ -8,9 +8,13 @@ from bereshit.Vector3 import Vector3
 
 
 class World:
-    def __init__(self, children=None):
+    def __init__(self, children=None,gizmos=None,gravity=Vector3(0, -9.8, 0)):
         self.children = children or []
         self.Camera = self.search_by_component('Camera')
+        self.gizmos = gizmos
+        self.gravity = gravity
+
+
 
     def search_by_component(self, component_name):
         # Check if this object has the desired component
@@ -40,14 +44,12 @@ class World:
             all_objs.extend(child.get_all_children_physics())
         return all_objs
 
-    @staticmethod
-    def apply_gravity(children):
+    def apply_gravity(self,children):
         for child in children:
             rb = child.get_component("Rigidbody")
             # # === 2) APPLY GRAVITY (AND TORSOUE DUE TO GRAVITY) ===
             if rb.useGravity:
-                gravity = Vector3(0, -9.8, 0)
-                rb.force += gravity * rb.mass
+                rb.force += self.gravity * rb.mass
 
     def solve_collections(self, children, dt, gizmos):
 
@@ -59,35 +61,36 @@ class World:
         # STEP 1: Collect all contacts (use ALL manifold points)
         for i in range(len(children)):
             obj1 = children[i]
-            rb11 = obj1.get_component("Rigidbody")
+            rb1 = obj1.get_component("Rigidbody")
 
             for j in range(i + 1, len(children)):
                 obj2 = children[j]
                 rb2 = obj2.get_component("Rigidbody")
 
                 # Skip if neither has a Rigidbody or both are kinematic
-                if (rb11 is None or rb11.isKinematic) and (rb2 is None or rb2.isKinematic):
+                if (rb1 is None or rb1.isKinematic) and (rb2 is None or rb2.isKinematic):
                     continue
 
-                result = obj1.collider.check_collision(obj2, single_point=True)
+                result = obj1.collider.check_collision(obj2, single_point=False)
                 if result is None:
                     continue
 
-                contact_points, arr, ref = result  # contact_points = [(cp, n, pn), ...]
+                contact_points = result  # contact_points = [(cp, n, pn), ...]
 
                 # Optional extra data (same per manifold)
-                rb1, rb2 = ref
-                ref_face_center, incident_face = arr[0], arr[1] if isinstance(arr, (list, tuple)) and len(
-                    arr) >= 2 else (None, None)
+                # rb1, rb2 = ref
+                # ref_face_center, incident_face = arr[0], arr[1] if isinstance(arr, (list, tuple)) and len(
+                #     arr) >= 2 else (None, None)
                 if type(contact_points[0]) == tuple:  # For each point in the manifold, add a separate constraint
                     N = len(contact_points)
                     for (contact_point, normal, penetration) in contact_points:
+                        contact_point = Vector3(contact_point)
                         r1 = contact_point - rb1.parent.position
                         r2 = contact_point - rb2.parent.position
 
-                        v1 = (rb1.velocity + rb1.angular_velocity.cross(r1)) if (
+                        v1 = (rb1.velocity + rb1.angular_velocity.cross(r1)* 0.0) if (
                                 rb1 and not rb1.isKinematic) else Vector3(0, 0, 0)
-                        v2 = (rb2.velocity + rb2.angular_velocity.cross(r2)) if (
+                        v2 = (rb2.velocity + rb2.angular_velocity.cross(r2)* 0.0) if (
                                 rb2 and not rb2.isKinematic) else Vector3(0, 0, 0)
 
                         v_rel = v1 - v2  # B minus A (matches normal pointing A->B)
@@ -103,8 +106,8 @@ class World:
                             "v_norm": v_norm,
                             "penetration": penetration,
                             "contact_point": contact_point,
-                            "ref_face_center": ref_face_center,
-                            "incident_face": incident_face,
+                            # "ref_face_center": ref_face_center,
+                            # "incident_face": incident_face,
                         })
                     contacts.append(contacts2)
                 elif type(contact_points[0]) == Vector3:
@@ -130,8 +133,8 @@ class World:
                         "v_norm": v_norm,
                         "penetration": penetration,
                         "contact_point": contact_point,
-                        "ref_face_center": ref_face_center,
-                        "incident_face": incident_face,
+                        # "ref_face_center": ref_face_center,
+                        # "incident_face": incident_face,
                     }])
         if gizmos:
             self.set_gizmos(contacts=contacts)
@@ -177,7 +180,7 @@ class World:
                                + (0 if rb2.isKinematic else 1 / rb2.mass)
                 c["J1"] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
                 # k[i, 0] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
-                # k[i, 1] = (-(1 + restitution) * c["v_norm"]) / denominator
+                # c["J1"] = (-(1 + restitution) * c["v_norm"]) / denominator
                 # k[i] /= length
 
         # STEP 4: Solve impulses (nonnegative)
@@ -188,7 +191,6 @@ class World:
         for contact_point in contacts:
             for i, contact in enumerate(contact_point):
                 J1 = contact["J1"]
-                J2 = k[i, 1]
 
                 if contact["v_norm"] >= 0:
                     continue
@@ -207,7 +209,7 @@ class World:
                     # rb2.isKinematic = True
 
                     if not rb1.isKinematic and not rb2.isKinematic:
-                        self.resolve_dynamic_collision(contact, J1, 0, flage)
+                        self.resolve_dynamic_collision(contact, J1,0, flage)
                         self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
                         self.resolve_kinematic_collision(contact, J1, 0, flage)
@@ -322,38 +324,25 @@ class World:
         impulse_vec2 = n * J2
 
         if rb1 and not rb1.isKinematic:
-            rb1.velocity += impulse_vec / rb1.mass
-            if flage:
-                # normal = rb1.force * n
-                # rb1.force += normal
-                rb1.force = Vector3()
-            # Angular impulse for rb1
+            velocity = impulse_vec / rb1.mass
             r1 = contact["r1"]
-            angular_impulse1 = r1.cross(impulse_vec2)
-            R = rb1.parent.quaternion.conjugate().to_matrix3()  # Convert quaternion to 3×3 rotation matrix
-            I_inv_world = R @ rb1.inverse_inertia @ R.T
 
-            rb1.angular_velocity += -Vector3.from_np(I_inv_world @ angular_impulse1.to_np())
+            rb1.velocity += velocity
+            # rb1.angular_velocity += r1.cross(velocity)
 
-        elif rb2 and not rb2.isKinematic:
-            rb2.velocity -= (impulse_vec / rb2.mass)
-            if flage:
-                rb2.force = Vector3()
 
-                # normal = rb2.force * n
-                # rb2.force += normal
-
+        if rb2 and not rb2.isKinematic:
+            velocity = -impulse_vec / rb2.mass
             r2 = contact["r2"]
-            angular_impulse2 = r2.cross(-impulse_vec2)  # r2 × (-J)
-            R = rb2.parent.quaternion.conjugate().to_matrix3()  # 3x3 rotation matrix
-            inverse_inertia_world = R @ rb2.inverse_inertia @ R.T
-            rb2.angular_velocity += -Vector3.from_np(inverse_inertia_world @ angular_impulse2.to_np())
+
+            rb2.velocity += velocity
+            # rb2.angular_velocity += r2.cross(impulse_vec) / rb2.inertia
 
     def set_gizmos(self, contacts=[]):
         g = False
         for contact_point in contacts:
             for i, contact in enumerate(contact_point):
-                self.children[1].children[i].position = contact['contact_point']
+                self.gizmos.children[i].position = contact['contact_point']
                 # self.children[1].children[i].quaternion = Quaternion.look_rotation(contact["normal"], Vector3(0,1,0))
                 g = True
 
@@ -410,8 +399,9 @@ class World:
             if rb is not None:
                 child_children = child.get_all_children_not_physics()
                 for child_of_child in child_children:
-                    child_of_child.position += child_of_child.Rigidbody.velocity * dt \
-                                               + 0.5 * child_of_child.Rigidbody.acceleration * dt * dt
+                    if child_of_child.get_component("Rigidbody") is not None:
+                        child_of_child.position += child_of_child.Rigidbody.velocity * dt \
+                                                   + 0.5 * child_of_child.Rigidbody.acceleration * dt * dt
                 if not rb.isKinematic:
                     self.integrat(child,dt)
 
