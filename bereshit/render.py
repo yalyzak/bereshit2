@@ -1,7 +1,8 @@
 # --- Preload moderngl_window submodules (fix for Nuitka onefile) ---
 import importlib
 import sys
-
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
 for name in [
     "moderngl_window.resources",
     "moderngl_window.resources.programs",
@@ -47,6 +48,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.wnd.exit_key = None
         self.root_object = BereshitRenderer.root_object  # 👈 assign it here
         self.camera_obj = self.root_object.search_by_component('Camera')
 
@@ -61,18 +63,23 @@ class BereshitRenderer(moderngl_window.WindowConfig):
             0, self.wnd.size[0], 0, self.wnd.size[1], -1.0, 1.0
         )
         self.ui_vbo = self.ctx.buffer(reserve=20 * 6 * 64)  # ~64 quads
-        self.text_shader = self.ctx.program(
-            vertex_shader=open("bereshit/shaders/ui_text.vert").read(),
-            fragment_shader=open("bereshit/shaders/ui_text.frag").read(),
-        )
-        self.text_shader["screen_size"].value = self.wnd.size[0], self.wnd.size[1]
-        self.text_shader["color"].value = (1.0, 1.0, 1.0, 1.0)
+        self.bullshit = ""
+        self.text_elements = []
+        self.text_prog = self.ctx.program(
+            vertex_shader=open("bereshit/shaders/text_vertex_shader.vert").read(),
+            fragment_shader=open("bereshit/shaders/text_fragment_shader.vert").read())
+        # === 4. Quad for drawing ===
+        vertices = np.array([
+            -1.0, -1.0, 0.0, 1.0,  # bottom-left
+            1.0, -1.0, 1.0, 1.0,  # bottom-right
+            -1.0, 1.0, 0.0, 0.0,  # top-left
+            1.0, 1.0, 1.0, 0.0,  # top-right
+        ], dtype='f4')
 
-        # --- Create geometry buffers ---
-        self.text_vbo = self.ctx.buffer(reserve=4 * 4 * 4)  # x, y, u, v
-        self.text_vao = self.ctx.vertex_array(
-            self.text_shader,
-            [(self.text_vbo, "2f 2f", "in_pos", "in_uv")]
+        self.text_vbo = self.ctx.buffer(vertices.tobytes())
+        self.text_vbo = self.ctx.vertex_array(
+            self.text_prog,
+            [(self.text_vbo, '2f 2f', 'in_vert', 'in_tex')]
         )
         # Simple UI shader
         self.ui_prog = self.ctx.program(
@@ -93,10 +100,65 @@ class BereshitRenderer(moderngl_window.WindowConfig):
             fragment_shader=open("bereshit/shaders/solid_fragment_shader.vert").read())
         self.view = Matrix44.identity()
         self.projection = Matrix44.perspective_projection(self.fov, self.wnd.aspect_ratio, 0.1, 1000.0)
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (
+            moderngl.SRC_ALPHA,
+            moderngl.ONE_MINUS_SRC_ALPHA,
+        )
+        self.keys_down = set()
+        self.keys_up = set()
+        self.keys = list()
+
 
         self.meshes = []
         self.prepare_meshes()
 
+    def GetKeyDown(self):
+        keys = self.wnd.keys
+        string = ""
+        for key in self.keys_down:
+
+            key_name = None
+            for name, value in vars(keys).items():
+                if value == key:
+                    key_name = name
+                    break
+
+            # Fallback to printing the raw key code
+            if key_name is None:
+                key_name = f"Unknown({key})"
+
+            string += key_name
+        self.keys_down = set()
+        return string
+
+    def GetKey(self):
+        keys = self.wnd.keys
+        string = ""
+        for key in self.keys:
+            key_name = None
+            for name, value in vars(keys).items():
+                if value == key:
+                    key_name = name
+                    break
+
+            # Fallback to printing the raw key code
+            if key_name is None:
+                key_name = f"Unknown({key})"
+
+            string += key_name
+        self.keys = list()
+        return string
+    def on_key_event(self, key, action, modifiers):
+        keys = self.wnd.keys
+        self.keys.append(key)
+
+        # Key pressed (only trigger once)
+        if action == keys.ACTION_PRESS and key not in self.keys_down:
+            self.keys_down.add(key)
+        # Key released (remove from pressed set)
+        elif action == keys.ACTION_RELEASE and key in self.keys_down:
+            self.keys_down.remove(key)
 
     def prepare_meshes(self):
         shading = self.cam.shading
@@ -203,7 +265,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     vao_buffer = self.ctx.buffer(vbo.tobytes())
                     vao = self.ctx.vertex_array(
                         self.solid_prog,
-                        [(vao_buffer, "3f", "aPos")]  # only position
+                        [(vao_buffer, "3f", "in_position")]  # only position
                     )
 
                     self.meshes.append({
@@ -220,6 +282,11 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         self.projection = Matrix44.perspective_projection(self.fov, self.wnd.aspect_ratio, 0.1, 1000.0)
         self.ortho_projection = Matrix44.orthogonal_projection(0, width, 0, height, -1.0, 1.0)
 
+    def render_text(self):
+        if not self.text_elements:
+            return
+        self.texture.use()
+        self.text_vbo.render(moderngl.TRIANGLE_STRIP)
     def render_ui(self):
         if not self.ui_elements:
             return
@@ -239,6 +306,28 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         self.ui_elements.clear()
         self.ctx.enable(moderngl.DEPTH_TEST)
 
+
+    def render_text(self):
+
+        # === 1. Create text image using Pillow ===
+        img = Image.new("RGBA", self.window_size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        for text in self.text_elements:
+            font_size = int(64 * text.scale)
+            font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", font_size)
+            draw.text((text.center), text.text, font=font, fill=(255, 255, 255, 255))
+
+        text_data = np.array(img).astype('u1')
+
+        # === 2. Upload to OpenGL as a texture ===
+        self.texture = self.ctx.texture(self.window_size, 4, text_data.tobytes())
+        self.texture.use()
+
+
+
+
+    def add_text_rect(self,text):
+        self.text_elements.append(text)
     def add_ui_rect(self, x, y, w, h, color=(1.0, 1.0, 1.0)):
         r, g, b = color
         hw, hh = w / 2, h / 2
@@ -358,9 +447,24 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         # self.add_ui_rect(x, y, rect_width, rect_height, color=(1.0, 0.0, 0.0))
 
         # --- Render UI on top ---
+        self.render_text()
         self.render_ui()
+        self.text_vbo.render(moderngl.TRIANGLE_STRIP)
+
 
 def run_renderer(root_object, Initialize):
     BereshitRenderer.Initialize = Initialize
     BereshitRenderer.root_object = root_object  # 👈 inject your object here
     moderngl_window.run_window_config(BereshitRenderer, args=['--window', 'glfw'])
+
+
+
+
+class Text:
+    def __init__(self, text="", center =(0.0, 0.0), size=(512, 128), scale=1.0):
+        self.text = text
+        self.center = center
+        self.size = size
+        self.scale = scale
+
+
