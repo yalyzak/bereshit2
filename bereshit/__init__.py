@@ -9,6 +9,9 @@ from .MeshRander import MeshRander
 from .World import World
 from .FixJoint import FixJoint
 from .render import BereshitRenderer as Render
+from .render import Text as Text
+
 from .Physics import Physics
+from .Physics import RaycastHit
 
 __all__ = ["Vector3", "Quaternion", "Object", "Rigidbody", "BoxCollider", "Material", "Camera", "MeshRander", "World", "FixJoint", "Render"]
