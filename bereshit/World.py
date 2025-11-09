@@ -382,7 +382,7 @@ class World:
         if check:
             for child in allchildren:
                 for component in child.components.values():
-                    if hasattr(component, 'Update') and component.Update is not None:
+                    if hasattr(component, 'Update') and component.Update is not None and component.Active:
                         try:
                             component.Update(dt)
                         except Exception as e:
