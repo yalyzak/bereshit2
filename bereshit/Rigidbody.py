@@ -43,6 +43,7 @@ class Rigidbody:
         self.angular_velocity = angular_velocity
 
         self.normal_force = Vector3()
+        self._COM = COM
 
     def _get_friction(self, other_rb):
         """
@@ -78,22 +79,61 @@ class Rigidbody:
     def attach(self, owner_object):
         # self.size = owner_object.size
         # self.position = owner_object.position
+        if self._COM is None:
+            hx = owner_object.size.x
+            hy = owner_object.size.y
+            hz = owner_object.size.z
+            self.inertia = Vector3(
+                (1 / 12) * self.mass * (hy ** 2 + hz ** 2),
+                (1 / 12) * self.mass * (hx ** 2 + hz ** 2),
+                (1 / 12) * self.mass * (hy ** 2 + hx ** 2)
+            )
+        else:
+            def box_inertia_vector(mass, hx, hy, hz, com_offset):
+                """
+                Returns the inertia as a Vector3 (Ixx, Iyy, Izz)
+                for a solid box with dimensions hx, hy, hz,
+                shifted by a COM offset using the parallel-axis theorem.
+
+                com_offset = Vector3(dx, dy, dz)
+                """
+
+                # === Base inertia at geometric center ===
+                Ixx = (1 / 12) * mass * (hy * hy + hz * hz)
+                Iyy = (1 / 12) * mass * (hx * hx + hz * hz)
+                Izz = (1 / 12) * mass * (hx * hx + hy * hy)
+
+                # === COM offset ===
+                dx, dy, dz = com_offset.x, com_offset.y, com_offset.z
+
+                # parallel-axis correction (diagonal terms)
+                # d^2 - dx^2  → contributes to Ixx
+                # d^2 - dy^2  → contributes to Iyy
+                # d^2 - dz^2  → contributes to Izz
+                d2 = dx * dx + dy * dy + dz * dz
+
+                Ixx += mass * (d2 - dx * dx)
+                Iyy += mass * (d2 - dy * dy)
+                Izz += mass * (d2 - dz * dz)
+
+                return Vector3(Ixx, Iyy, Izz)
+
+            hx = owner_object.size.x
+            hy = owner_object.size.y
+            hz = owner_object.size.z
+
+
+
+            self.inertia = box_inertia_vector(self.mass, hx, hy, hz, self._COM)
         self.center_of_mass = owner_object.position
         self.obj = owner_object
         self.material = owner_object.material.kind
         self.forward = owner_object.quaternion.rotate(owner_object.position)
         EPSILON = 1e-8  # Small value to avoid division by zero
 
-        hx = owner_object.size.x / 2
-        hy = owner_object.size.y
-        hz = owner_object.size.z
 
-        self.inertia = Vector3(
-            (1 / 12) * self.mass * (hy ** 2 + hz ** 2),  # I_x (unchanged)
-            (1 / 12) * self.mass * (hx * 2) ** 2 + self.mass * (hx) ** 2 + (1 / 12) * self.mass * (hz ** 2),
-            # simplified below
-            (1 / 12) * self.mass * (hx * 2) ** 2 + self.mass * (hx) ** 2 + (1 / 12) * self.mass * (hy ** 2)
-        )
+
+
 
         def safe_inverse(value):
             return 1.0 / value if abs(value) > EPSILON else 0.0

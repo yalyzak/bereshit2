@@ -769,6 +769,9 @@ class BoxCollider:
                 #     collision_axis = axis
                 #     collision_type = source
                 #     collision_axis_indices = indices
+            direction = self.obj.position - other_collider.obj.position
+            if direction.dot(collision_axis) < 0:
+                collision_axis = -collision_axis
             return collision_axis, collision_type, collision_axis_indices
 
         result = SAT()
@@ -789,7 +792,7 @@ class BoxCollider:
             norm = np.linalg.norm(vector)
             hit = other_collider.Raycast(ver[i], vector / norm, maxDistance=norm)
             if hit.point is not None:
-                hits.add((tuple(hit.point), -collision_axis, 0))
+                hits.add((tuple(hit.point), collision_axis, 0))
         # if hits == set():
         #     return None
         contact_points = list(hits)

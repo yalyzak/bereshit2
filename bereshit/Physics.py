@@ -21,6 +21,7 @@ class Physics:
 
     @staticmethod
     def Raycast(origin, direction, layerMask, maxDistance=float('inf')):
+        hit = RaycastHit()
         if layerMask is not None:
             hit = layerMask.Raycast(origin, direction, maxDistance)
         return hit

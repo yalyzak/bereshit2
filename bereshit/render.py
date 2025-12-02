@@ -87,7 +87,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
             fragment_shader=open("bereshit/shaders/ui_fragment_shader.vert").read())
         self.ui_vao = self.ctx.vertex_array(
             self.ui_prog,
-            [(self.ui_vbo, "2f 3f", "in_position", "in_color")]
+            [(self.ui_vbo, "2f 4f", "in_position", "in_color")]
         )
 
         # Store UI elements to draw
@@ -282,28 +282,30 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         self.projection = Matrix44.perspective_projection(self.fov, self.wnd.aspect_ratio, 0.1, 1000.0)
         self.ortho_projection = Matrix44.orthogonal_projection(0, width, 0, height, -1.0, 1.0)
 
-    def render_text(self):
-        if not self.text_elements:
-            return
-        self.texture.use()
-        self.text_vbo.render(moderngl.TRIANGLE_STRIP)
+    # def render_text(self):
+    #     if not self.text_elements:
+    #         return
+    #     self.texture.use()
+    #     self.text_vbo.render(moderngl.TRIANGLE_STRIP)
     def render_ui(self):
         if not self.ui_elements:
             return
         self.ctx.disable(moderngl.DEPTH_TEST)
         # self.ctx.disable(moderngl.CULL_FACE)  # if you enabled it elsewhere
         self.ctx.enable(moderngl.BLEND)
-
-        all_vertices = np.concatenate(self.ui_elements).astype('f4', copy=False)
+        ui_elements = []
+        for v in self.ui_elements:
+            ui_elements.append(v.vertices())
+        all_vertices = np.concatenate(ui_elements).astype('f4', copy=False)
         self.ui_vbo.orphan(all_vertices.nbytes)
         self.ui_vbo.write(all_vertices)
 
         self.ui_prog["ortho"].write(self.ortho_projection.astype("f4").tobytes())
 
-        vertex_count = all_vertices.size // 5
+        vertex_count = all_vertices.size // 6
         self.ui_vao.render(mode=moderngl.TRIANGLES, vertices=vertex_count)
 
-        self.ui_elements.clear()
+        # self.ui_elements.clear()
         self.ctx.enable(moderngl.DEPTH_TEST)
 
 
@@ -315,32 +317,47 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         for text in self.text_elements:
             font_size = int(64 * text.scale)
             font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", font_size)
-            draw.text((text.center), text.text, font=font, fill=(255, 255, 255, 255))
+            draw.text((text.center), text.text, font=font, fill=text.color+(int(255*text.opacity),))
 
         text_data = np.array(img).astype('u1')
 
         # === 2. Upload to OpenGL as a texture ===
         self.texture = self.ctx.texture(self.window_size, 4, text_data.tobytes())
         self.texture.use()
+    # def render_box(self):
+    #
+    #     # === 1. Create text image using Pillow ===
+    #     img = Image.new("RGBA", self.window_size, (0, 0, 0, 0))
+    #     draw = ImageDraw.Draw(img)
+    #
+    #     for box in tuple(self.UI_elements):
+    #         w,h = box.size[0]/2, box.size[1]/2
+    #         x, y = box.center[0], box.center[1]
+    #         rectangle_coords = (box.center[0], box.center[1])
+    #         draw.rectangle(rectangle_coords, fill="blue", outline="red", width=3)
+    #
+    #     text_data = np.array(img).astype('u1')
+    #
+    #     # === 2. Upload to OpenGL as a texture ===
+    #     self.texture = self.ctx.texture(self.window_size, 4, text_data.tobytes())
+    #     self.texture.use()
 
-
-
+    def addUI(self, element):
+        self.UI_elements.add(element)
+    def removeUI(self, element):
+        self.UI_elements.add(element)
+    def renderUI(self):
+        for element in self.UI_elements:
+            if type(element) == Text():
+                self.render_text()
 
     def add_text_rect(self,text):
         self.text_elements.append(text)
-    def add_ui_rect(self, x, y, w, h, color=(1.0, 1.0, 1.0)):
-        r, g, b = color
-        hw, hh = w / 2, h / 2
-        vertices = np.array([
-            x - hw, y - hh, r, g, b,
-            x + hw, y - hh, r, g, b,
-            x + hw, y + hh, r, g, b,
+    def remove_text_rect(self,text):
+        self.text_elements = [t for t in self.text_elements if t is not text]
 
-            x - hw, y - hh, r, g, b,
-            x + hw, y + hh, r, g, b,
-            x - hw, y + hh, r, g, b,
-        ], dtype="f4")
-        self.ui_elements.append(vertices)
+    def add_ui_rect(self, box):
+        self.ui_elements.append(box)
 
     def on_render(self, time: float, frametime: float):
         # collect all scene objects (root + children)
@@ -449,6 +466,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         # --- Render UI on top ---
         self.render_text()
         self.render_ui()
+        # self.render_box()
         self.text_vbo.render(moderngl.TRIANGLE_STRIP)
 
 
@@ -461,10 +479,40 @@ def run_renderer(root_object, Initialize):
 
 
 class Text:
-    def __init__(self, text="", center =(0.0, 0.0), size=(512, 128), scale=1.0):
+    def __init__(self, text="", center =(0.0, 0.0), size=(512, 128), scale=1.0,color=(255, 255, 255), opacity=1,container=None):
+        self.container = container
         self.text = text
         self.center = center
         self.size = size
         self.scale = scale
+        self.color = color
+        self.opacity = opacity
 
+class Box:
+    def __init__(self, center =(960, 540), size=(100, 100), scale=1.0,color=(255, 255, 255), opacity=1, container=None, children=None):
+        self.container = container
+        self.children = children
+        self.center = center
+        self.size = size
+        self.scale = scale
+        self.color = color
+        self.opacity = opacity
 
+    def vertices(self):
+        r, g, b = self.color
+        a = self.opacity  # <-- add opacity
+
+        hw, hh = self.size[0] / 2, self.size[1] / 2
+        x, y = self.center
+
+        vertices = np.array([
+            x - hw, y - hh, r, g, b, a,
+            x + hw, y - hh, r, g, b, a,
+            x + hw, y + hh, r, g, b, a,
+
+            x - hw, y - hh, r, g, b, a,
+            x + hw, y + hh, r, g, b, a,
+            x - hw, y + hh, r, g, b, a,
+        ], dtype="f4")
+
+        return vertices

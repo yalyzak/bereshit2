@@ -139,6 +139,7 @@ class Object:
 
         self.components[name] = component
         component.parent = self  # optional back-reference
+        component.Active = True
 
         if hasattr(component, 'start') and component.start is not None:
             component.start()
@@ -151,7 +152,7 @@ class Object:
         self.children = children or []
         self.name = name
         self.size = Size(*size) if isinstance(size, tuple) else size or Size()
-        self.components = components or {}
+        self.components = {}
         self.local_rotation = LocalRotation()
 
         for child in self.children:

@@ -8,11 +8,15 @@ from bereshit.Vector3 import Vector3
 
 
 class World:
-    def __init__(self, children=None,gizmos=None,gravity=Vector3(0, -9.8, 0)):
+    def __init__(self, children=None,gizmos=None,gravity=Vector3(0, -9.8, 0),tick=None,speed=None,render_tick=None):
         self.children = children or []
         self.Camera = self.search_by_component('Camera')
         self.gizmos = gizmos
         self.gravity = gravity
+        World.tick = tick
+        World.render_tick = render_tick
+        World.speed = speed
+
 
 
 
@@ -179,7 +183,7 @@ class World:
                 denominator2 = (0 if rb1.isKinematic else 1 / rb1.mass) \
                                + (0 if rb2.isKinematic else 1 / rb2.mass)
                 c["J1"] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
-                # k[i, 0] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
+                c["J2"] = (-(1 + restitution) * c["v_norm"]) / (denominator2 * length)
                 # c["J1"] = (-(1 + restitution) * c["v_norm"]) / denominator
                 # k[i] /= length
 
@@ -191,7 +195,7 @@ class World:
         for contact_point in contacts:
             for i, contact in enumerate(contact_point):
                 J1 = contact["J1"]
-
+                J2 = contact["J2"]
                 if contact["v_norm"] >= 0:
                     continue
                 #     J = 0
@@ -212,7 +216,7 @@ class World:
                         self.resolve_dynamic_collision(contact, J1,0, flage)
                         self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
-                        self.resolve_kinematic_collision(contact, J1, 0, flage)
+                        self.resolve_kinematic_collision(contact, J1, 0.01, flage)
                         self.apply_friction_impulse(contact, n, J1)
 
         return contacts
@@ -329,14 +333,14 @@ class World:
 
             rb1.velocity += velocity
             # rb1.angular_velocity += r1.cross(velocity)
-
+            rb1.angular_velocity += r1.cross(impulse_vec2) / -rb1.inertia
 
         if rb2 and not rb2.isKinematic:
             velocity = -impulse_vec / rb2.mass
             r2 = contact["r2"]
 
             rb2.velocity += velocity
-            # rb2.angular_velocity += r2.cross(impulse_vec) / rb2.inertia
+            rb2.angular_velocity += r2.cross(impulse_vec) / rb2.inertia
 
     def set_gizmos(self, contacts=[]):
         g = False
@@ -370,19 +374,20 @@ class World:
         children1 = self.get_all_children()
         for child in children1:
             for component in child.components.values():
-                if hasattr(component, 'Start') and component.Start is not None:
+                if hasattr(component, 'Start') and component.Start is not None and component.Active == True:
                     try:
                         component.Start()
                     except:
                         print(f"[Error] Exception in {component.__class__.__name__}.Start():")
                         traceback.print_exc()
 
-    def update(self, dt, check=True, gizmos=False):
+    def update(self, check=True, gizmos=False):
+        dt = World.tick
         allchildren = self.get_all_children()
         if check:
             for child in allchildren:
                 for component in child.components.values():
-                    if hasattr(component, 'Update') and component.Update is not None and component.Active:
+                    if hasattr(component, 'Update') and component.Update is not None and component.Active == True:
                         try:
                             component.Update(dt)
                         except Exception as e:
@@ -415,6 +420,8 @@ class World:
         rb.acceleration = rb.force / rb.mass
 
         # 4.2) Angular acceleration & velocity (component‐wise):
+        # I_world_inv = Iinv_world(rb)
+        # rb.angular_acceleration = I_world_inv @ rb.torque
         rb.angular_acceleration = Vector3(
             rb.torque.x / rb.inertia.x if rb.inertia.x != 0 else 0,
             rb.torque.y / rb.inertia.y if rb.inertia.y != 0 else 0,
@@ -425,7 +432,7 @@ class World:
         ang_disp = rb.angular_velocity * dt \
                    + 0.5 * rb.angular_acceleration * dt * dt
 
-        self.quaternion *= Quaternion.euler(ang_disp)
+        self.quaternion *= Quaternion.euler_radians(ang_disp)
 
         self.position += rb.velocity * dt \
                          + 0.5 * rb.acceleration * dt * dt
@@ -454,3 +461,10 @@ def Iinv_world(rb):
         return R @ rb.inverse_inertia @ R.T
     # else assume the given one is already world
     return rb.inverse_inertia
+# def Iinv_world(rb):
+#     R = rb.parent.quaternion.to_matrix3()  # 3x3 from quaternion
+#
+#     I_local = np.diag([rb.inertia.x, rb.inertia.y, rb.inertia.z])
+#     I_world = R @ I_local @ R.T
+#     I_world_inv = np.linalg.inv(I_world)
+#     return Vector3.from_np(I_world_inv)

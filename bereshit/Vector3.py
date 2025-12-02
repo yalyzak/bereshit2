@@ -4,11 +4,9 @@ from math import sqrt
 from dataclasses import dataclass
 
 
-# @dataclass
+
 class Vector3:
-    # x: float = 0
-    # y: float = 0
-    # z: float = 0
+
     def __init__(self,x=0,y=0,z=0):
         if type(x) == tuple and len(x) == 3:
             self.x = x[0]
@@ -179,3 +177,6 @@ class Vector3:
         yield self.x
         yield self.y
         yield self.z
+
+    def __repr__(self):
+        return f"Vector3(x={self.x}, y={self.y}, z={self.z})"

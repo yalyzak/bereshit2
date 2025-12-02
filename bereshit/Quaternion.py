@@ -151,6 +151,27 @@ class Quaternion:
         return Quaternion(x, y, z, w)
 
     @classmethod
+    def euler_radians(cls, vec3):  # vec3 = Vector3(roll, pitch, yaw)
+
+        roll = vec3.x
+        pitch = vec3.y
+        yaw = vec3.z
+
+        c1 = math.cos(yaw / 2)
+        s1 = math.sin(yaw / 2)
+        c2 = math.cos(pitch / 2)
+        s2 = math.sin(pitch / 2)
+        c3 = math.cos(roll / 2)
+        s3 = math.sin(roll / 2)
+
+        w = c1 * c2 * c3 + s1 * s2 * s3
+        x = c1 * c2 * s3 - s1 * s2 * c3
+        y = c1 * s2 * c3 + s1 * c2 * s3
+        z = s1 * c2 * c3 - c1 * s2 * s3
+
+        return cls(x, y, z, w)
+
+    @classmethod
     def euler(cls, vec3):  # vec3 = Vector3(roll, pitch, yaw)
         roll = math.radians(vec3.x)
         pitch = math.radians(vec3.y)
@@ -169,7 +190,6 @@ class Quaternion:
         z = s1 * c2 * c3 - c1 * s2 * s3
 
         return cls(x, y, z, w)
-
 
     def look_rotation(forward: "Vector3", up: "Vector3") -> "Quaternion":
         """

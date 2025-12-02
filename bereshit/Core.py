@@ -9,24 +9,23 @@ from bereshit import Object, render, World,Vector3
 # import old_render as render
 
 
-def run(scene,speed=1, gizmos=False, scriptRefreshRate=60,tick=1/60, Render=True, ForceRenderInitialize=True, gravity=Vector3(0,-9.8,0)):
+def run(scene,speed=1, gizmos=False, scriptRefreshRate=60,tick=1/60, Render=True, ForceRenderInitialize=True, gravity=Vector3(0,-9.8,0), render_update_rate=1/60):
     if not Render:
         ForceRenderInitialize = False
 
     TARGET_FPS = 60
     # bereshit.dt = TARGET_FPS * 0.000165
 
-    dt = tick
 
     startg = time.time()
     FPS = 1
     if gizmos:
         hit_points = [Object(size=(0.1,0.1,0.1),position=(100,100,100),children=[Object(size=(0.1,0.1,0.1),position=(100,100,100)) for i in range(8)]) for i in range(8)]
         gizmos_container = Object(size=(0,0,0),children=hit_points)
-        world = World(children=scene+[gizmos_container],gizmos=gizmos_container,gravity=gravity)
+        world = World(children=scene+[gizmos_container],gizmos=gizmos_container,gravity=gravity,tick=tick,speed=speed,render_tick=render_update_rate)
 
     else:
-        world = World(children=scene,gravity=gravity)
+        world = World(children=scene,gravity=gravity,tick=tick,speed=speed,render_tick=render_update_rate)
     async def main_logic(Initialize):
         start_wall_time = time.time()
         steps = 0
@@ -37,16 +36,16 @@ def run(scene,speed=1, gizmos=False, scriptRefreshRate=60,tick=1/60, Render=True
         world.Start()
         while True:
             steps += 1
-            simulated_time = steps * dt
+            simulated_time = steps * world.render_tick
 
             if steps % scriptRefreshRate == 0:
-                world.update(dt, check=True,gizmos=gizmos)
+                world.update(check=True,gizmos=gizmos)
             else:
                 # Update simulation
-                world.update(dt,gizmos=gizmos)
+                world.update(gizmos=gizmos)
             # Compute when, in wall clock time, this simulated time should happen
             # For double speed: simulated_time advances twice as fast as real time
-            target_wall_time = start_wall_time + (simulated_time / speed)
+            target_wall_time = start_wall_time + (simulated_time / world.speed)
             now = time.time()
             sleep_time = target_wall_time - now
 
