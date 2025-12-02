@@ -1,86 +1,133 @@
 import socket
-import struct
+import threading
+import json
+import random
+import string
+
+HOST = "0.0.0.0"
+TCP_PORT = 5000
+UDP_PORT = 5001
+
+rooms = {}
+# rooms[passcode] = {
+#    "users": {
+#        username: (ip, udp_port)
+#    }
+# }
+
+# ---------------------------------------------------
+# Utility
+# ---------------------------------------------------
+
+def generate_passcode(length=6):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=length))
 
 
+# ---------------------------------------------------
+# TCP HANDLER (room creation, joining)
+# ---------------------------------------------------
 
+def handle_tcp_client(conn, addr):
+    print("[TCP] Connection from", addr)
 
-print("UDP Server listening on port 5000...")
-hostname = socket.gethostname()
-IPAddr = socket.gethostbyname(hostname)
-print(f"Your Computer's Local IP Address is: {IPAddr}")
-def get_ipv4():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # connect() doesn't actually send packets
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    finally:
-        s.close()
-    return ip
-print("Your computer's IPv4 address is:", get_ipv4())
-
-class Server:
-    def __init__(self):
-        self.clients = set()
-
-        # Create UDP socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("0.0.0.0", 5000))
-
-    def Add_Client(self, addr):
-        self.clients.add(addr)
-        print("New client:", addr)
-    def Unpack(self, data):
-        if len(data) < 4:
-            raise ValueError("Packet too short")
-
-        # First 4 bytes = name length
-        name_len = struct.unpack("!I", data[:4])[0]
-        fmt = f"!I{name_len}s fff fff ffff"  # 6 floats total: pos(3) + vel(3)
-        expected_len = struct.calcsize(fmt)
-
-        if len(data) != expected_len:
-            print(f"Bad packet length: got {len(data)}, expected {expected_len}")
-            return None
-        unpacked = struct.unpack(fmt, data)
-
-        return unpacked
-    def Broadcast(self, addr, data):
-        for other_addr in list(self.clients):
-            if other_addr != addr:
-                try:
-                    self.sock.sendto(data, other_addr)
-                except Exception as e:
-                    print(f"Error sending to {other_addr}: {e}")
-                    self.clients.discard(other_addr)
-
-
-    def Main(self):
         while True:
-            try:
-                data, addr = self.sock.recvfrom(1024)
-            except ConnectionResetError:
-                # Ignore ICMP "port unreachable" errors (Windows quirk)
-                continue
-            except Exception as e:
-                print("Recv error:", e)
-                continue
+            data = conn.recv(4096)
+            if not data:
+                break
 
-            if addr not in self.clients:
-                self.Add_Client(addr)
+            msg = json.loads(data.decode())
+            action = msg.get("action")
 
-            # Try to decode safely
-            try:
-                result = self.Unpack(data)
-                if result is None:
-                    self.sock.sendto("Bad packet length".encode(), addr)
+            # --- Create Room ---
+            if action == "create_room":
+                passcode = generate_passcode()
+                rooms[passcode] = {"users": {}}
+                conn.send(json.dumps({"status": "ok", "room": passcode}).encode())
+
+            # --- Find Room ---
+            elif action == "find_room":
+                room = msg["room"]
+                exists = room in rooms
+                conn.send(json.dumps({"exists": exists}).encode())
+
+            # --- Join Room ---
+            elif action == "join_room":
+                room = msg["room"]
+                username = msg["username"]
+                udp_port = msg["udp_port"]  # client tells us its UDP listening socket
+
+                if room not in rooms:
+                    conn.send(json.dumps({"status": "error", "message": "Room not found"}).encode())
                 else:
-                    _, name, x, y, z, xq, yq, zq, wq, vx, vy, vz = result
-                    # Broadcast to all other clients
-                    self.Broadcast(addr,data)
+                    rooms[room]["users"][username] = (addr[0], udp_port)
+                    conn.send(json.dumps({"status": "ok"}).encode())
 
-            except Exception as e:
-                print(f"Bad packet from {addr}: {e}")
+            else:
+                conn.send(json.dumps({"status": "error", "message": "Unknown action"}).encode())
 
-server = Server()
-server.Main()
+    except Exception as e:
+        print("[ERROR]", e)
+
+    finally:
+        conn.close()
+        print("[TCP] Closed", addr)
+
+
+def tcp_server():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, TCP_PORT))
+    s.listen()
+    print(f"[TCP] Listening on {HOST}:{TCP_PORT}")
+
+    while True:
+        conn, addr = s.accept()
+        threading.Thread(target=handle_tcp_client, args=(conn, addr), daemon=True).start()
+
+
+# ---------------------------------------------------
+# UDP BROADCAST HANDLER
+# ---------------------------------------------------
+
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_socket.bind((HOST, UDP_PORT))
+
+def broadcast(room, sender, message):
+    if room not in rooms:
+        return
+
+    for username, (ip, port) in rooms[room]["users"].items():
+        if username != sender:
+            payload = json.dumps({
+                "room": room,
+                "from": sender,
+                "message": message
+            }).encode()
+
+            udp_socket.sendto(payload, (ip, port))
+
+
+def udp_server():
+    print(f"[UDP] Listening for broadcast messages on {HOST}:{UDP_PORT}")
+
+    while True:
+        data, addr = udp_socket.recvfrom(4096)
+        msg = json.loads(data.decode())
+
+        # msg = { "action": "broadcast", "room": "...", "username": "...", "message": "..." }
+
+        if msg.get("action") == "broadcast":
+            broadcast(msg["room"], msg["username"], msg["message"])
+
+
+
+def main():
+    print("[SERVER] Starting...")
+
+    threading.Thread(target=tcp_server, daemon=True).start()
+    udp_server()   # UDP must stay on main thread
+
+
+if __name__ == "__main__":
+    main()
