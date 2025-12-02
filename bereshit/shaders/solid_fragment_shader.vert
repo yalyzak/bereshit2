@@ -20,12 +20,12 @@ void main()
     float distance = length(light_pos - frag_pos);
     // Quadratic attenuation model:  1 / (a + b*d + c*d^2)
     float constant  = 1.0;    // minimum light strength
-    float linear    = 0.09;   // small linear falloff
-    float quadratic = 0.032;  // faster quadratic falloff
+    float linear    = 0.01;   // small linear falloff
+    float quadratic = 0.001;  // faster quadratic falloff
     float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));
 
     // --- Ambient term ---
-    float ambient_strength = 0.8;
+    float ambient_strength = 0.6;
     vec3 ambient = ambient_strength * light_color;
 
     // --- Diffuse term ---
