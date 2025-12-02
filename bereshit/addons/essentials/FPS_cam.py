@@ -1,9 +1,10 @@
 import math
+import time
 
 import mouse
 
 import bereshit
-from bereshit import Quaternion,Vector3,MeshRander
+from bereshit import Quaternion,Vector3,MeshRander, World
 
 CENTER_X = 960
 CENTER_Y = 540
@@ -12,6 +13,7 @@ class FPS_cam:
     def __init__(self):
         self.total_pitch = 0.0
         self.total_yaw = 0.0
+        self.pause = False
 
     def s(self,dt):
         x, y = mouse.get_position()
@@ -38,11 +40,13 @@ class FPS_cam:
         self.parent.quaternion = yaw_q * pitch_q
         # self.parent.quaternion *= Quaternion.euler(Vector3(0.001,0,0))
         mouse.move(CENTER_X, CENTER_Y)
-
     def Update(self,dt):
         # self.parent.quaternion *= Quaternion.euler(Vector3(0.001,0,0))
         # Get current rotation
-        self.s(dt)
+
+        if World.tick != 0:
+            self.s(dt)
+
 
         # Save
         # self.parent.quaternion = self.parent.quaternion.normalized()
@@ -54,6 +58,7 @@ class FPS_cam:
         # print(self.parent.rotation)
 
     def Start(self):
+        self.render = self.parent.Camera.render
         mouse.move(CENTER_X, CENTER_Y)
         self.total_pitch = self.parent.rotation.x
         self.total_yaw= self.parent.rotation.y

@@ -9,24 +9,24 @@ class CamController:
 
 
     def keyboard_controller(self, dt):
-        if keyboard.is_pressed('esc'):
-            print("Paused. Release ESC to continue.")
-
-            # Wait until ESC is released
-            while keyboard.is_pressed('esc'):
-                time.sleep(0.05)
-
-            print("Now press ESC again to continue.")
-
-            # Wait for ESC to be pressed again
-            while not keyboard.is_pressed('esc'):
-                time.sleep(0.05)
-
-            # Wait for ESC to be released again before continuing
-            while keyboard.is_pressed('esc'):
-                time.sleep(0.05)
-
-            print("Continuing...")
+        # if keyboard.is_pressed('esc'):
+        #     print("Paused. Release ESC to continue.")
+        #
+        #     # Wait until ESC is released
+        #     while keyboard.is_pressed('esc'):
+        #         time.sleep(0.05)
+        #
+        #     print("Now press ESC again to continue.")
+        #
+        #     # Wait for ESC to be pressed again
+        #     while not keyboard.is_pressed('esc'):
+        #         time.sleep(0.05)
+        #
+        #     # Wait for ESC to be released again before continuing
+        #     while keyboard.is_pressed('esc'):
+        #         time.sleep(0.05)
+        #
+        #     print("Continuing...")
 
         if keyboard.is_pressed('w'):
             forward = self.parent.quaternion.rotate(Vector3(0, 0, 1))

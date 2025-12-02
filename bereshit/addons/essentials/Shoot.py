@@ -1,6 +1,8 @@
+import random
+
 from bereshit import Object,Camera,Vector3, Rigidbody, BoxCollider, MeshRander, Quaternion, Render, Physics
 import mouse  # pip install mouse
-from bereshit.render import Text
+from bereshit.render import Text,Box
 
 import copy
 class Shoot:
@@ -9,7 +11,7 @@ class Shoot:
         self.timer = 0.0      # time passed since last shot
         self.speed = 10
         self.target = target
-        self.force = 10
+        self.force = 50
         self.shots = 10
         self.shots_text = Text(str(self.shots), center=(120,850), scale=1)
 
@@ -25,20 +27,23 @@ class Shoot:
         forward = self.parent.quaternion.rotate(Vector3(0,0,1))
         hit = Physics.Raycast(self.parent.position.to_np(),forward.to_np(),self.target.get_component("collider"))
         if hit.point is not None:
-            self.target.Rigidbody.AddForce(forward * self.force,ContactPoint=Vector3.from_np(hit.point))
+            self.target.Rigidbody.AddForce(forward * self.force,Vector3.from_np(hit.point))
             # self.gimos.position = Vector3.from_np(hit)
     def Start(self):
         self.render = self.parent.Camera.render
         self.target.add_child(self.gimos)
         self.render.add_text_rect(self.shots_text)
+        self.shoot = Box(size=(100,100),opacity=0.5)
+        self.render.addUI(self.shoot)
 
     def Update(self, dt):
 
         # advance the timer
         self.timer += dt
-
+        self.shoot.opacity = random.Random()
         if mouse.is_pressed("left") and self.timer >= 0.2:
-            self.render.add_ui_rect(self.render.window_size[0]/2,self.render.window_size[1]/2,100,100)
+            self.shoot.opacity = 1
+
             self.onClick()
             self.timer = 0.0
             # self.cooldown = 1
