@@ -1,4 +1,5 @@
 import socket
+import struct
 import threading
 import json
 
@@ -10,10 +11,13 @@ class Client:
 
         # --- Create UDP socket for receiving ---
         self.udp_listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_listener.setblocking(False)
         self.udp_listener.bind(("0.0.0.0", 0))  # random free port
         self.my_udp_port = self.udp_listener.getsockname()[1]
+        self.Room = None
+        self.UserName = None
 
-        threading.Thread(target=self._listen_udp, daemon=True).start()
+        # threading.Thread(target=self._listen_udp, daemon=False).start()
 
     # ---------------- TCP -----------------
 
@@ -38,6 +42,9 @@ class Client:
             "username": UserName,
             "udp_port": self.my_udp_port
         })
+        if reply["status"] == "ok":
+            self.Room = RoomName
+            self.UserName = UserName
         return reply["status"] == "ok"
 
     # ---------------- UDP -----------------
@@ -48,14 +55,30 @@ class Client:
             msg = json.loads(data.decode())
             print(f"[{msg['room']}] {msg['from']}: {msg['message']}")
 
-    def Broadcast(self, RoomName, UserName, message):
+    def ReceiveMassages(self):
+        try:
+            data, addr = self.udp_listener.recvfrom(4096)
+
+        except BlockingIOError:
+            # No message available right now → not an error
+            return None
+
+        # Decode JSON safely
+        try:
+            return json.loads(data.decode())
+        except Exception as e:
+            print("Bad UDP message:", e)
+            return None
+
+    def Broadcast(self, UserName, message):
         """Send message to server's UDP broadcast system."""
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        values = struct.unpack("fff fff ffff", message)
+
         udp.sendto(json.dumps({
             "action": "broadcast",
-            "room": RoomName,
             "username": UserName,
-            "message": message
+            "message": values,
         }).encode(), (self.server_host, self.server_udp_port))
 
 
@@ -72,6 +95,6 @@ if __name__ == "__main__":
     print("Connected!")
 
     while True:
-        msg = "asd"
-        c.Broadcast(room, "Yaly", msg)
+        msg = input()
+        c.Broadcast("Yaly", msg)
 

@@ -9,6 +9,7 @@ TCP_PORT = 5000
 UDP_PORT = 5001
 
 rooms = {}
+user_rooms = {}
 # rooms[passcode] = {
 #    "users": {
 #        username: (ip, udp_port)
@@ -21,6 +22,7 @@ rooms = {}
 
 def generate_passcode(length=6):
     chars = string.ascii_uppercase + string.digits
+    return "0"
     return ''.join(random.choices(chars, k=length))
 
 
@@ -58,14 +60,27 @@ def handle_tcp_client(conn, addr):
                 username = msg["username"]
                 udp_port = msg["udp_port"]  # client tells us its UDP listening socket
 
+                # Room not found
                 if room not in rooms:
-                    conn.send(json.dumps({"status": "error", "message": "Room not found"}).encode())
-                else:
-                    rooms[room]["users"][username] = (addr[0], udp_port)
-                    conn.send(json.dumps({"status": "ok"}).encode())
+                    conn.send(json.dumps({
+                        "status": "error",
+                        "message": "Room not found"
+                    }).encode())
+                    continue
 
-            else:
-                conn.send(json.dumps({"status": "error", "message": "Unknown action"}).encode())
+                # Username already exists
+                if username in rooms[room]["users"]:
+                    conn.send(json.dumps({
+                        "status": "error",
+                        "message": "Username already taken"
+                    }).encode())
+                    continue
+
+                # OK: add user
+                rooms[room]["users"][username] = (addr[0], udp_port)
+                user_rooms[username] = room
+                conn.send(json.dumps({"status": "ok"}).encode())
+
 
     except Exception as e:
         print("[ERROR]", e)
@@ -96,7 +111,6 @@ udp_socket.bind((HOST, UDP_PORT))
 def broadcast(room, sender, message):
     if room not in rooms:
         return
-
     for username, (ip, port) in rooms[room]["users"].items():
         if username != sender:
             payload = json.dumps({
@@ -112,14 +126,23 @@ def udp_server():
     print(f"[UDP] Listening for broadcast messages on {HOST}:{UDP_PORT}")
 
     while True:
-        data, addr = udp_socket.recvfrom(4096)
-        msg = json.loads(data.decode())
+        try:
+            data, addr = udp_socket.recvfrom(4096)
+        except ConnectionResetError:
+            # Ignore – usually remote client closed or unreachable
+            continue
 
+        msg = json.loads(data.decode())
         # msg = { "action": "broadcast", "room": "...", "username": "...", "message": "..." }
 
         if msg.get("action") == "broadcast":
-            broadcast(msg["room"], msg["username"], msg["message"])
+            username = msg["username"]
+            message = msg["message"]
 
+            # server decides room
+            room = user_rooms.get(username)
+            if room:
+                broadcast(room, username, message)
 
 
 def main():
