@@ -49,15 +49,17 @@ class Clientuse:
             return
 
         username = msg["from"]
-        raw = msg["message"]
+        data = msg["message"]
 
         # --- Ensure correct data size ---
-        if len(raw) != SIZE:
-            print("Bad message size from", username, len(raw))
+        if len(data) != 10:
+            print("Bad message size from", username, len(data))
             return
 
-        # --- Unpack floats ---
-        px, py, pz, qx, qy, qz, qw, vx, vy, vz = struct.unpack(FORMAT, raw)
+            # Extract values
+        px, py, pz = data[0:3]
+        qx, qy, qz, qw = data[3:7]
+        vx, vy, vz = data[7:10]
 
         # --- Create new player if not in dictionary ---
         if username not in players:
@@ -66,7 +68,7 @@ class Clientuse:
             new_player.add_component(Rigidbody(useGravity=False))  # server controls vel
 
             # Optional: add a renderer so you can see the player
-            new_player.add_component(MeshRander(shape="cube"))
+            new_player.add_component(MeshRander(shape="box"))
 
             # Add to world
             self.Continer.add_child(new_player)
