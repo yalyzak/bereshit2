@@ -25,24 +25,25 @@ class Shoot:
         self.shots_text.text = str(self.shots)
         # self.render.t = str(self.shots)
         forward = self.parent.quaternion.rotate(Vector3(0,0,1))
-        hit = Physics.Raycast(self.parent.position.to_np(),forward.to_np(),self.target.get_component("collider"))
-        if hit.point is not None:
-            self.target.Rigidbody.AddForce(forward * self.force,Vector3.from_np(hit.point))
+        hits = Physics.RaycastAll(self.parent.position.to_np(),forward.to_np())
+        for hit in hits:
+            if hit.point is not None and hit.collider.parent.get_component(self.target):
+                hit.collider.parent.Rigidbody.AddForce(forward * self.force)#,Vector3.from_np(hit.point)
             # self.gimos.position = Vector3.from_np(hit)
     def Start(self):
         self.render = self.parent.Camera.render
-        self.target.add_child(self.gimos)
+        # self.target.add_child(self.gimos)
         self.render.add_text_rect(self.shots_text)
-        self.shoot = Box(size=(100,100),opacity=0.5)
-        self.render.addUI(self.shoot)
+        # self.shoot = Box(size=(100,100),opacity=0.5)
+        # self.render.add_ui_rect(self.shoot)
 
     def Update(self, dt):
 
         # advance the timer
         self.timer += dt
-        self.shoot.opacity = random.Random()
+        # self.shoot.opacity = random.Random()
         if mouse.is_pressed("left") and self.timer >= 0.2:
-            self.shoot.opacity = 1
+            # self.shoot.opacity = 1
 
             self.onClick()
             self.timer = 0.0
