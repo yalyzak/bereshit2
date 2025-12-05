@@ -85,7 +85,7 @@ class Clientuse:
 
         player.quaternion = Quaternion(qx, qy, qz, qw)
 
-        rb = player.get_component(Rigidbody)
+        rb = player.get_component("Rigidbody")
         rb.velocity = Vector3(vx, vy, vz)
 
 
