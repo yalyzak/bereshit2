@@ -213,7 +213,7 @@ class BoxCollider:
             normal_world = rotation_matrix @ normal_local
             normal_world /= np.linalg.norm(normal_world)
 
-            return RaycastHit(hit_world,normal_world)
+            return RaycastHit(hit_world,normal_world,np.linalg.norm(hit_world - orig),self)
 
         center = self.parent.position.to_np()
         half_size = (self.parent.size/2).to_np()
@@ -231,11 +231,11 @@ class BoxCollider:
                                     face["rotation"])
 
             if temp_hit is not None:
-                temp_dis = np.linalg.norm(temp_hit.point - origin)
-                if temp_dis < dis and temp_dis < maxDistance:
-                    hit.distance = temp_dis
+                if temp_hit.distance < dis and temp_hit.distance < maxDistance:
+                    hit.distance = temp_hit.distance
                     hit.point = temp_hit.point
                     hit.normal = temp_hit.normal
+                    hit.collider = temp_hit.collider
         return hit
 
 
@@ -785,14 +785,14 @@ class BoxCollider:
             norm = np.linalg.norm(vector)
             hit = self.Raycast(ver[i], vector / norm, maxDistance=norm)
             if hit.point is not None:
-                hits.add((tuple(hit.point), -collision_axis, 0))
+                hits.add((tuple(hit.point), collision_axis, 0))
         ver = self.vertices()
         for i in range(len(ver)):
             vector = ver[(i + 1) % 8] - ver[i]
             norm = np.linalg.norm(vector)
             hit = other_collider.Raycast(ver[i], vector / norm, maxDistance=norm)
             if hit.point is not None:
-                hits.add((tuple(hit.point), collision_axis, 0))
+                hits.add((tuple(hit.point), -collision_axis, 0))
         # if hits == set():
         #     return None
         contact_points = list(hits)

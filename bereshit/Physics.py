@@ -1,5 +1,5 @@
 import numpy as np
-
+from bereshit.World import World
 
 class RaycastHit:
     def __init__(self, point=None, normal=None, distance=None, collider=None, transform=None, rigidbody=None):
@@ -20,11 +20,34 @@ class Physics:
         # self.hit = hit if hit is not None else Raycast.RaycastHit()
 
     @staticmethod
-    def Raycast(origin, direction, layerMask, maxDistance=float('inf')):
+    def Raycast(origin, direction, layerMask=None, maxDistance=float('inf')):
         hit = RaycastHit()
-        if layerMask is not None:
+        if layerMask:
             hit = layerMask.Raycast(origin, direction, maxDistance)
+        else:
+            dis = float('inf')
+            for object in World.Objects:
+                collider = object.get_component("collider")
+                if collider:
+                    temphit = collider.Raycast(origin, direction, maxDistance)
+                    if temphit.point is not None and temphit.distance < dis:
+                        dis = temphit.distance
+                        hit = temphit
+
+
         return hit
+    @staticmethod
+    def RaycastAll(origin, direction, maxDistance=float('inf')):
+        hits = []
+        for object in World.Objects:
+            collider = object.get_component("collider")
+            if collider:
+                hit = collider.Raycast(origin, direction, maxDistance)
+                if hit.point is not None:
+                    hits.append(hit)
+
+        return hits
+
         # def ray_triangle_intersect(orig, dir, triangle, eps=1e-90):
         #     v0, v1, v2 = triangle
         #     # Compute edges

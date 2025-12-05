@@ -3,7 +3,7 @@ import math
 import traceback
 
 import numpy as np
-
+from bereshit.World import World
 from bereshit.Material import Material
 from bereshit.MeshRander import MeshRander
 from bereshit.Quaternion import Quaternion
@@ -109,15 +109,13 @@ class Object:
         if new_child.parent == None:
             new_child.parent = self
         new_child.world = self
+
         for i, child in enumerate(self.children):
             if child.name == new_child.name:
-                self.children[i] = new_child
-
-                # render.prepare_mesh_for_object(new_child)
-                break
+               raise Exception("fuck you i did not program this yat")
         else:
-            # render.prepare_mesh_for_object(new_child)
             self.children.append(new_child)
+            World.Objects.append(new_child)
 
     def add_component(self, component, name=None):
         # --- handle list input first ---
@@ -210,7 +208,14 @@ class Object:
             del self.components[name]
 
     def get_component(self, name):
-        return self.components.get(name, None)
+        if isinstance(name, str):
+            return self.components.get(name)
+        else:
+            # name is a class
+            for c in self.components.values():
+                if isinstance(c, name):
+                    return c
+        return None
 
     def __getattr__(self, name):
         # Allow normal attribute access

@@ -16,6 +16,7 @@ class World:
         World.tick = tick
         World.render_tick = render_tick
         World.speed = speed
+        World.Objects = self.get_all_children()
 
 
 
@@ -75,7 +76,7 @@ class World:
                 if (rb1 is None or rb1.isKinematic) and (rb2 is None or rb2.isKinematic):
                     continue
 
-                result = obj1.collider.check_collision(obj2, single_point=False)
+                result = obj1.collider.check_collision(obj2, single_point=True)
                 if result is None:
                     continue
 
@@ -195,7 +196,7 @@ class World:
         for contact_point in contacts:
             for i, contact in enumerate(contact_point):
                 J1 = contact["J1"]
-                J2 = contact["J2"]
+                # J2 = contact["J2"]
                 if contact["v_norm"] >= 0:
                     continue
                 #     J = 0
@@ -216,7 +217,7 @@ class World:
                         self.resolve_dynamic_collision(contact, J1,0, flage)
                         self.apply_friction_impulse(contact, n, J1)
                     elif (not rb1.isKinematic) or (not rb2.isKinematic):
-                        self.resolve_kinematic_collision(contact, J1, 0.01, flage)
+                        self.resolve_kinematic_collision(contact, J1, 0, flage)
                         self.apply_friction_impulse(contact, n, J1)
 
         return contacts
@@ -333,14 +334,14 @@ class World:
 
             rb1.velocity += velocity
             # rb1.angular_velocity += r1.cross(velocity)
-            rb1.angular_velocity += r1.cross(impulse_vec2) / -rb1.inertia
+            # rb1.angular_velocity += r1.cross(impulse_vec2) / -rb1.inertia
 
         if rb2 and not rb2.isKinematic:
             velocity = -impulse_vec / rb2.mass
             r2 = contact["r2"]
 
             rb2.velocity += velocity
-            rb2.angular_velocity += r2.cross(impulse_vec) / rb2.inertia
+            # rb2.angular_velocity += r2.cross(impulse_vec) / rb2.inertia
 
     def set_gizmos(self, contacts=[]):
         g = False
