@@ -1,4 +1,6 @@
-class Material:
+from bereshit.bereshitCore import Component
+
+class Material(Component):
     COLOR_MAP = {
         "white": (1.0, 1.0, 1.0),
         "black": (0.0, 0.0, 0.0),
@@ -11,6 +13,8 @@ class Material:
     }
 
     def __init__(self, kind="Steel", color="white"):
+        super().__init__()
+
         self.kind = kind
         # self.color = color
         if isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, (int, float)) for c in color):
@@ -18,6 +22,9 @@ class Material:
             self.color = color
         else:
             self.color = self.COLOR_MAP.get(color.lower(), (1.0, 1.0, 1.0))  # default to white
+        self.name = "material"
 
     def attach(self, owner_object):
         return "material"
+
+

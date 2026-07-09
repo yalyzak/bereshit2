@@ -6,10 +6,12 @@ import trimesh
 from PIL import Image
 
 from bereshit.Vector3 import Vector3
+from bereshit.bereshitCore import Component
 
 
-class MeshRander:
+class MeshRander(Component):
     def __deepcopy__(self, memo):
+
         cls = type(self)
 
         # 1. Create empty object
@@ -49,7 +51,6 @@ class MeshRander:
         if mesh:
             owner_object.remove_component("Mesh")
 
-        self.parent = owner_object
         if self._obj_path:
             self._vertices, self._triangles, self._edges, self._colors = self.load_model()
 
@@ -79,9 +80,10 @@ class MeshRander:
         if self._repeat_texture:
             if self._shape == "box":
                 self.build_uv_cube()
-        return "Mesh"
 
     def __init__(self, vertices=None, edges=None, shape=None, triangles=None, faces=None, obj_path=None, size=None, texture=None, repeat_texture=False):
+        super().__init__()
+        self.name = "Mesh"
         self._shape = shape
         self.colors = None
         if texture:

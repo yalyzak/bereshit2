@@ -314,9 +314,9 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def render_mesh(self, item, shading, cam_pos):
         obj = item['obj']
-        pos = obj.position.to_np()
-        size = obj.size.to_np()
-        rot = obj.quaternion
+        pos = obj.transform.position.to_np()
+        size = obj.transform.size.to_np()
+        rot = obj.transform.quaternion
 
         model = (
                 Matrix44.from_scale(size * 0.5)
@@ -497,8 +497,8 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         self.ui_elements.append(box)
 
     def rendering_setup(self):
-        if self.camera_obj.World.RunningFlag[0]:
-            self.wnd.close()
+        # if self.camera_obj.World.RunningFlag[0]:
+        #     self.wnd.close()
 
         # collect all scene objects (root + children)
         scene_objs = self.root_object.get_all_children()
@@ -528,8 +528,8 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
         self.ctx.clear(0.0, 0.0, 0.0)
 
-        cam_pos = self.camera_obj.position.to_np()
-        cam_rot = self.camera_obj.quaternion
+        cam_pos = self.camera_obj.transform.position.to_np()
+        cam_rot = self.camera_obj.transform.quaternion
         # Rotate forward vector (0, 0, 1) using the rotation matrix
         pyrr_q = PyrrQuat([cam_rot.x, cam_rot.y, cam_rot.z, cam_rot.w])
         rot_matrix = Matrix44.from_quaternion(pyrr_q)
@@ -545,7 +545,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         up = rotated_up[:3]
 
         self.view = Matrix44.look_at(
-            PyrrVector3(cam_pos.tolist()),
+            PyrrVector3(cam_pos),
             PyrrVector3(target.tolist()),
             PyrrVector3(up.tolist())  # or [0,1,0] if not rotated
         )

@@ -3,8 +3,11 @@ import numpy as np
 from bereshit import Quaternion, World
 from bereshit.Vector3 import Vector3
 
+from bereshit.bereshitCore import Component
 
-class Rigidbody:
+
+
+class Rigidbody(Component):
     _friction_table = {
         ("Steel", "Concrete"): 0.6,
         ("Rubber", "Concrete"): 0.9,
@@ -23,6 +26,8 @@ class Rigidbody:
                  center_of_mass=Vector3(0, 0, 0), velocity=None, angular_velocity=None, force=None,
                  isKinematic=False, useGravity=True, drag=0.98, friction_coefficient=0.6, restitution=0.6, COM=None,
                  Freeze_Rotation=None):
+        super().__init__()
+
         self.mass = mass
         self.invMass = 0.0 if isKinematic else 1 / mass
         self.material = ""
@@ -185,13 +190,13 @@ class Rigidbody:
     def integrate(self, dt):
 
         self.acceleration = self.force * self.invMass
-
+        angular_acceleration = self.torque.MatrixMultiplication(self._Iinv_world)
         if not self.Freeze_Rotation.x:
-            self.angular_acceleration.x = self.torque.x / self.inertia.x
+            self.angular_acceleration.x = angular_acceleration.x
         if not self.Freeze_Rotation.y:
-            self.angular_acceleration.y = self.torque.y / self.inertia.y
+            self.angular_acceleration.y = angular_acceleration.y
         if not self.Freeze_Rotation.z:
-            self.angular_acceleration.z = self.torque.z / self.inertia.z
+            self.angular_acceleration.z = angular_acceleration.z
 
         ang_disp = self.angular_velocity * dt + 0.5 * self.angular_acceleration * dt * dt
 
@@ -208,11 +213,9 @@ class Rigidbody:
             self.parent.up = self.parent.quaternion.rotate(Vector3(0, 1, 0))
             self.parent.forward = self.parent.quaternion.rotate(Vector3(0, 0, 1))
 
-        old_pos = self.parent.position.copy()
-
         self.parent.position += self.velocity * dt + 0.5 * self.acceleration * dt * dt
 
-        if old_pos != self.parent.position:
+        if (self.velocity.x or self.velocity.y or self.velocity.z) or (self.acceleration.x or self.acceleration.y or self.acceleration.z):
             self.parent.Cache.aabb_dirty = True
 
         self.velocity += self.acceleration * dt
@@ -268,9 +271,9 @@ class Rigidbody:
         # self.size = owner_object.size
         # self.position = owner_object.position
         if self._COM is None:
-            hx = owner_object.size.x
-            hy = owner_object.size.y
-            hz = owner_object.size.z
+            hx = owner_object.transform.size.x
+            hy = owner_object.transform.size.y
+            hz = owner_object.transform.size.z
             self.inertia = Vector3(
                 (1 / 12) * self.mass * (hy ** 2 + hz ** 2),
                 (1 / 12) * self.mass * (hx ** 2 + hz ** 2),
@@ -320,10 +323,10 @@ class Rigidbody:
             hz = owner_object.size.z
 
             self.inertia = box_inertia_vector(self.mass, hx, hy, hz, self._COM)
-        self.center_of_mass = owner_object.position
+        self.center_of_mass = owner_object.transform.position
         self.obj = owner_object
         self.material = owner_object.material.kind
-        self.forward = owner_object.quaternion.rotate(owner_object.position)
+        self.forward = owner_object.transform.quaternion.rotate(owner_object.transform.position)
 
         EPSILON = 1e-8  # Small value to avoid division by zero
 
@@ -343,7 +346,7 @@ class Rigidbody:
             self._Iinv_world = np.zeros((3, 3))
             return None
 
-        R = self.parent.quaternion.to_matrix3(self.parent.Cache)
+        R = self.parent.transform.quaternion.to_matrix3(self.parent.Cache)
         self._Iinv_world = R @ self.inverse_inertia @ R.T
 
     def Iinv_world(self):

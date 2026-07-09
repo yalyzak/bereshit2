@@ -3,7 +3,9 @@ import threading
 import time
 # from builtins import range
 
-from bereshit import Object, render, World, Vector3, Physics
+from bereshit import render, World
+
+from bereshitCore import GameObject, Vector3
 
 
 # import old_render as render
@@ -23,12 +25,12 @@ def run(scene,speed=1, gizmos=False, scriptRefreshRate=None,tick=1/60, Render=Tr
     if not isinstance(scene, list):
         scene = [scene]
     if gizmos:
-        hit_points = [Object(size=(0.1,0.1,0.1),position=(100,100,100)) for i in range(100)]
-        gizmos_container = Object(size=(0,0,0),children=hit_points)
-        world = World(Exit, children=scene+[gizmos_container],gizmos=gizmos_container,gravity=gravity,tick=tick,speed=speed, physics_epochs=physics_epochs, scale=scale)
+        hit_points = [GameObject(Vector3(100,100,100), Vector3(0,0,0), Vector3(0.1,0.1,0.1)) for i in range(100)]
+        gizmos_container = GameObject(Vector3(0,0,0), Vector3(0,0,0), Vector3(0,0,0),hit_points)
+        world = World(Exit[0], scene+[gizmos_container], gizmos_container, gravity, tick, speed, physics_epochs)
 
     else:
-        world = World(Exit, children=scene,gravity=gravity,tick=tick,speed=speed, physics_epochs=physics_epochs, scale=scale)
+        world = World(Exit[0], scene, GameObject(), gravity, tick, speed, physics_epochs)
 
     async def main_logic(Initialize, MaxTime=None):
         start_wall_time = time.perf_counter()
@@ -51,10 +53,10 @@ def run(scene,speed=1, gizmos=False, scriptRefreshRate=None,tick=1/60, Render=Tr
                 exit()
 
             if steps % scriptRefreshRate == 0:
-                world.update(check=True,gizmos=gizmos)
+                world.update(True)
             else:
                 # Update simulation
-                world.update(gizmos=gizmos)
+                world.update()
 
             # Compute when, in wall clock time, this simulated time should happen
             # For double speed: simulated_time advances twice as fast as real time
@@ -78,6 +80,66 @@ def run(scene,speed=1, gizmos=False, scriptRefreshRate=None,tick=1/60, Render=Tr
             logic_thread.start()
             # Start rendering in main thread
             render.run_renderer(world,Initialize, Exit)
+        else:
+            logic_thread = threading.Thread(target=start_async_loop, daemon=True, args=(MaxTime))
+            logic_thread.start()
+
+            # Start rendering in main thread
+            render.run_renderer(world)
+    else:
+        start_async_loop(MaxTime=MaxTime)
+
+def run_max_speed(scene, scriptRefreshRate=None, tick=1 / 60, Render=True, ForceRenderInitialize=True,
+                  gravity=Vector3(0, -9.8, 0), physics_epochs=10, MaxTime=None):
+    Exit = [False]
+    if not Render:
+        ForceRenderInitialize = False
+    if scriptRefreshRate is None:
+        scriptRefreshRate = (1 / 30) / tick
+    else:
+        scriptRefreshRate = scriptRefreshRate / tick
+
+    if not isinstance(scene, list):
+        scene = [scene]
+
+    world = World(Exit[0], scene, GameObject(), gravity, tick, 1, physics_epochs)
+
+    def main_logic(Initialize, MaxTime=None):
+        steps = 0
+        startedTime = time.perf_counter()
+        while not Initialize[0]:
+            time.sleep(0.001)
+        world.Start()
+        while not Exit[0]:
+            steps += 1
+            simulated_time = steps * world.tick
+
+            if MaxTime is not None and simulated_time >= MaxTime:
+                print(f"Stopping simulation: reached MaxTime ({MaxTime})")
+                print(f"simulated time escaped: {simulated_time}")
+                print(f"real time escaped: {time.perf_counter() - startedTime}")
+                world.Exit()
+                exit()
+
+            if steps % scriptRefreshRate == 0:
+                world.update(True)
+            else:
+                # Update simulation
+                world.update()
+        if Exit[0]:
+            exit()
+
+    def start_async_loop(Initialize=[True], MaxTime=None):
+        main_logic(Initialize, MaxTime)
+
+    if Render:
+        if ForceRenderInitialize:
+            Initialize = [False]
+
+            logic_thread = threading.Thread(target=start_async_loop, daemon=True, args=([Initialize], MaxTime))
+            logic_thread.start()
+            # Start rendering in main thread
+            render.run_renderer(world, Initialize, Exit)
         else:
             logic_thread = threading.Thread(target=start_async_loop, daemon=True, args=(MaxTime))
             logic_thread.start()

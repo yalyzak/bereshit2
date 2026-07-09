@@ -6,7 +6,6 @@ from bereshit.Physics import RaycastHit
 from bereshit.Collider import Collider, ContactPoints, Collision
 from bereshit.Cache import Cache
 
-
 class BoxCollider(Collider):
 
     @staticmethod
@@ -424,9 +423,9 @@ class BoxCollider(Collider):
 
     def attach(self, owner_object):
         super().attach(owner_object)
-        box = owner_object.get_component(BoxCollider)  # will remove duplicate renders by default
-        if box:
-            owner_object.remove_component("Collider")
+        # box = owner_object.get_component(BoxCollider)  # will remove duplicate renders by default
+        # if box:
+        #     owner_object.remove_component("Collider")
 
         self.obj = owner_object
         return "Collider"  # need to be change to "Collider" but fucks up the whole update loop

@@ -3,11 +3,14 @@ import numpy as np
 from bereshit.Physics import RaycastHit
 from bereshit.Vector3 import Vector3
 from bereshit.Quaternion import Quaternion
+from bereshit.bereshitCore import Component
 
-class Collider:
+class Collider(Component):
     Scale = 1
 
     def __init__(self, size=None, position=None, rotation=Vector3(), object_pointer=None, is_trigger=False):
+        super().__init__()
+
         self.half_size = None
         self.__delta_size = Vector3() if not size else size
         self.__delta_position = Vector3() if not position else position
@@ -33,7 +36,7 @@ class Collider:
         return self.__delta_quaternion * self.parent.quaternion
 
     def attach(self, parent):
-        self.half_size = (self.__delta_size + parent.size) * 0.5
+        self.half_size = (self.__delta_size + parent.transform.size) * 0.5
 
     @staticmethod
     def check_collision(collider1, collider2, single_point=False):
