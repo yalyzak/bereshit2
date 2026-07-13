@@ -3,7 +3,7 @@ import math
 import traceback
 
 import numpy as np
-from bereshit.World import World
+from bereshit.bereshitCore import World
 from bereshit.Material import Material
 from bereshit.MeshRander import MeshRander
 from bereshit.Quaternion import Quaternion

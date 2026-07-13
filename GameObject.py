@@ -18,11 +18,11 @@ class GameObject(GameObject):
 
     def add_component(self, component):
 
-        component.attach(self)
-        super().add_component(component)
+        # component.attach(self)
+        # super().add_component(component)
 
         # Save by component name, for cam.Camera
-        if component.name != 'Component':
+        if component.name != 'class PyComponent':
             self._py_components[component.name] = component
         else:
             self._py_components[component.__class__.__name__] = component

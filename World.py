@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from bereshit.Quaternion import Quaternion
-from bereshit.Rigidbody import Rigidbody
+from bereshit.bereshitCore import Rigidbody
 from bereshit.Vector3 import Vector3
 from bereshit.Joint import Joint
 from bereshit.Collider import Collider
@@ -13,52 +13,7 @@ from bereshit.Physics import Physics
 
 logger = logging.getLogger(__name__)
 
-from bereshit.bereshitCore import World
 
-class World(World):
-    def PythonUpdate(self, PhysicsChildren):
-        contacts = self.solve_collectionsFirstIteration(PhysicsChildren, self.tick)
-
-    def solve_collectionsFirstIteration(self, children, dt):
-
-        contacts = []
-        colliders = [obj.Collider for obj in children]
-        candidate_pairs = Collider.sweep_and_prune(colliders)
-
-        for Collider1, Collider2 in candidate_pairs:
-            if Collider2 in colliders:
-                colliders.remove(Collider2)
-            if Collider1 in colliders:
-                colliders.remove(Collider1)
-            # Skip if neither has a Rigidbody or both are kinematic
-            rb1 = Collider1.parent.get_component("Rigidbody")
-            rb2 = Collider2.parent.get_component("Rigidbody")
-
-            if rb1.isKinematic and rb2.isKinematic:
-                continue
-
-            result = Collider1.__class__.check_collision(Collider1, Collider2)
-            if result is None:
-                continue
-
-            for contact_point in result.contact_points:
-                Rigidbody.solve_impulse(rb1, rb2, contact_point, result.normal, result.depth, dt, apply_friction=True)
-
-                contacts.append({
-                    "rb1": rb1,
-                    "rb2": rb2,
-                    "normal": result.normal,
-                    "penetration": result.depth,
-                    "contact_point": contact_point,
-                })
-
-        for collider in colliders:
-            collider.handle_collision_exit()
-
-        if self.gizmos:
-            self.set_gizmos(contacts=contacts)  # needs Updating/Fixing
-
-        return contacts
 
 
 class World2:

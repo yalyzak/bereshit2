@@ -3,9 +3,9 @@ import threading
 import time
 # from builtins import range
 
-from bereshit import render, World
+from bereshit import render
 
-from bereshitCore import GameObject, Vector3
+from bereshitCore import GameObject, Vector3, World
 
 
 # import old_render as render

@@ -1,5 +1,4 @@
 
-
 from .Vector3 import Vector3
 from .Vector2 import Vector2
 from .Quaternion import Quaternion
@@ -10,7 +9,6 @@ from .BoxCollider import BoxCollider
 # from .Material import Material
 from .Camera import Camera
 from .MeshRander import MeshRander
-from .World import World
 from .FixedJoint import FixedJoint
 from .HingeJoint import HingeJoint
 from .render import BereshitRenderer as Render

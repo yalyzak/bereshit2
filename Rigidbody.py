@@ -344,7 +344,7 @@ class Rigidbody(Component):
     def _update_inertia_world(self):
         if not self or self.isKinematic:
             self._Iinv_world = np.zeros((3, 3))
-            return None
+            return
 
         R = self.parent.transform.quaternion.to_matrix3(self.parent.Cache)
         self._Iinv_world = R @ self.inverse_inertia @ R.T
