@@ -80,6 +80,7 @@ class MeshRander(Component):
         if self._repeat_texture:
             if self._shape == "box":
                 self.build_uv_cube()
+        return "Mesh"
 
     def __init__(self, vertices=None, edges=None, shape=None, triangles=None, faces=None, obj_path=None, size=None, texture=None, repeat_texture=False):
         super().__init__()
