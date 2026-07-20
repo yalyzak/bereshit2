@@ -198,7 +198,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         self.keys_up = set()
         self.keys = list()
 
-        self.meshes = []
+        self.MeshRanderes = []
         self.prepare_meshes()
 
         self.texture = self.ctx.texture(self.window_size, 4)
@@ -216,22 +216,22 @@ class BereshitRenderer(moderngl_window.WindowConfig):
     def wire_shading(self, objs):
         for obj in objs:
 
-            if obj.Mesh is None or obj.Mesh.vertices() == []:
+            if obj.MeshRander is None or obj.MeshRander.vertices() == []:
                 continue
 
             # Convert vertices to numpy
             # verts = [(v * obj.size * 0.5).to_np() for v in
-            #          obj.Mesh.vertices]  # Ensure this returns list or np.array of floats
-            verts = [v.to_np() for v in obj.Mesh.vertices()]  # no size, no 0.5
+            #          obj.MeshRander.vertices]  # Ensure this returns list or np.array of floats
+            verts = [v.to_np() for v in obj.MeshRander.vertices()]  # no size, no 0.5
 
             lines = []
-            for i, j in obj.Mesh.edges():
+            for i, j in obj.MeshRander.edges():
                 lines.extend(verts[i])  # 👈 flatten the vector into x, y, z
                 lines.extend(verts[j])
 
             vbo = np.array(lines, dtype='f4')
             vao = self.ctx.buffer(vbo.tobytes())
-            self.meshes.append({
+            self.MeshRanderes.append({
                 'obj': obj,
                 'vbo': vao,
                 'vao': self.ctx.vertex_array(
@@ -243,16 +243,16 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def solid_shading(self, objs):
         for obj in objs:
-            if obj.Mesh is None:
+            if obj.MeshRander is None:
                 continue
 
             # Convert vertices to numpy (scaled and centered)
-            verts = [v.to_np() for v in obj.Mesh.vertices()]
+            verts = [v.to_np() for v in obj.MeshRander.vertices()]
 
             # Build triangle vertex list
             triangles = []
-            if obj.Mesh.triangles():
-                for tri in obj.Mesh.triangles():  # tri = (i, j, k)
+            if obj.MeshRander.triangles():
+                for tri in obj.MeshRander.triangles():  # tri = (i, j, k)
                     for index in tri:
                         triangles.extend(verts[index])  # flatten x, y, z into list
 
@@ -263,7 +263,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     [(vao_buffer, "3f", "in_position")]  # only position
                 )
 
-                self.meshes.append({
+                self.MeshRanderes.append({
                     'obj': obj,
                     'vbo': vao_buffer,
                     'vao': vao,
@@ -272,16 +272,16 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def material_preview_shading(self, objs):
         for obj in objs:
-            if obj.Mesh is None:
+            if obj.MeshRander is None:
                 continue
 
-            verts = [v.to_np() for v in obj.Mesh.vertices()]
-            uvs = obj.Mesh.uvs()
+            verts = [v.to_np() for v in obj.MeshRander.vertices()]
+            uvs = obj.MeshRander.uvs()
             uvs = uvs if uvs is not None and len(uvs) > 0 else []
 
             vertex_data = []
-            if obj.Mesh.triangles() is not None:
-                for tri in obj.Mesh.triangles():
+            if obj.MeshRander.triangles() is not None:
+                for tri in obj.MeshRander.triangles():
                     for index in tri:
 
                         # position
@@ -305,7 +305,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
                     [(vao_buffer, "3f 2f", "in_position", "in_texcoord")]
                 )
 
-                self.meshes.append({
+                self.MeshRanderes.append({
                     'obj': obj,
                     'vbo': vao_buffer,
                     'vao': vao,
@@ -373,13 +373,13 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         # self.material_prog['view_pos'].value = tuple(cam_pos)
 
         # Bind texture
-        texture = obj.Mesh.texture()
+        texture = obj.MeshRander.texture()
 
         if texture:
-            if not hasattr(obj.Mesh, "gpu_texture"):
-                obj.Mesh.gpu_texture = self.image_to_texture(texture)
+            if not hasattr(obj.MeshRander, "gpu_texture"):
+                obj.MeshRander.gpu_texture = self.image_to_texture(texture)
 
-            obj.Mesh.gpu_texture.use(location=0)
+            obj.MeshRander.gpu_texture.use(location=0)
         else:
             self.default_texture.use(location=0)
         # Draw mesh
@@ -405,7 +405,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
             self.material_preview_shading(missing)
 
     def cleanup_removed_meshes(self, removed_objs):
-        self.meshes = [m for m in self.meshes if m['obj'] not in removed_objs]
+        self.MeshRanderes = [m for m in self.MeshRanderes if m['obj'] not in removed_objs]
 
     def resize(self, width: int, height: int):
         self.width, self.height = width, height
@@ -508,7 +508,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         scene_objs = [obj for obj in scene_objs if obj not in skip_objs]
 
         # objects we already have meshes for
-        existing_objs = [m['obj'] for m in self.meshes]
+        existing_objs = [m['obj'] for m in self.MeshRanderes]
 
         # objects missing a mesh
         missing = [obj for obj in scene_objs if obj not in existing_objs]
@@ -553,7 +553,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def on_render(self, time: float, frametime: float):
         cam_pos, target, up, shading = self.rendering_setup()
-        for item in self.meshes:
+        for item in self.MeshRanderes:
             self.render_mesh(item, shading, cam_pos)
 
         # --- Render UI on top ---

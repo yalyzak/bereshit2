@@ -3,7 +3,6 @@ from bereshit import Material, MeshRander
 from bereshit.bereshitCore import GameObject
 
 
-
 class GameObject(GameObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,8 +16,9 @@ class GameObject(GameObject):
 
 
     def add_component(self, component):
-
-        name = component.attach(self)
+        name= None
+        if "attach" in type(component).__dict__:
+            name = component.attach(self)
         super().add_component(component)
 
         # Save by component name, for cam.Camera

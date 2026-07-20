@@ -3,14 +3,14 @@ import time
 
 import mouse
 
-import bereshit
-from bereshit import Quaternion,Vector3,MeshRander, World
+from bereshit.bereshitCore import Component, Vector3, Quaternion
 
 CENTER_X = 960
 CENTER_Y = 540
 sensitivity = 0.1  # adjust to your liking
-class FPS_cam:
+class FPS_cam(Component):
     def __init__(self):
+        super(FPS_cam, self).__init__()
         self.total_pitch = 0.0
         self.total_yaw = 0.0
         self.pause = False
@@ -37,7 +37,7 @@ class FPS_cam:
         yaw_q = Quaternion.axis_angle(Vector3(0, 1, 0), self.total_yaw)
 
         # self.parent.quaternion = pitch_q * yaw_q   # Rotate identity, not previous rotation
-        self.parent.quaternion = yaw_q * pitch_q
+        self.parent.transform.quaternion = yaw_q * pitch_q
         # self.parent.quaternion *= Quaternion.euler(Vector3(0.001,0,0))
         mouse.move(CENTER_X, CENTER_Y)
     def Update(self,dt):
@@ -59,5 +59,5 @@ class FPS_cam:
     def Start(self):
         self.render = self.parent.Camera.render
         mouse.move(CENTER_X, CENTER_Y)
-        self.total_pitch = math.radians(self.parent.rotation.x)
-        self.total_yaw = math.radians(self.parent.rotation.y)
+        self.total_pitch = math.radians(self.parent.transform.rotation.x)
+        self.total_yaw = math.radians(self.parent.transform.rotation.y)
