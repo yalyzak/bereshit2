@@ -112,7 +112,8 @@ class World:
             normal = contact['normal']
             rb1, rb2 = contact['rb1'], contact['rb2']
             penetration = contact['penetration']
-            Rigidbody.solve_impulse(rb1, rb2, contact_point, normal, penetration, dt, apply_friction=True)
+            J = Rigidbody.solve_impulse(rb1, rb2, contact_point, normal, penetration, dt, apply_friction=False)
+
 
     def solve_collectionsFirstIteration(self, children, dt):
 
@@ -137,7 +138,7 @@ class World:
                 continue
 
             for contact_point in result.contact_points:
-                Rigidbody.solve_impulse(rb1, rb2, contact_point, result.normal, result.depth, dt, apply_friction=True)
+                J = Rigidbody.applyFrictionImpulse(rb1, rb2, contact_point, result.normal, result.depth, dt)
 
                 contacts.append({
                     "rb1": rb1,
@@ -145,6 +146,7 @@ class World:
                     "normal": result.normal,
                     "penetration": result.depth,
                     "contact_point": contact_point,
+                    "j" : J
                 })
 
         for collider in colliders:

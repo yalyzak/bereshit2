@@ -92,7 +92,6 @@ class Rigidbody:
         k_angular = normal.dot(term1 + term2)
         inv_eff_mass = k_linear + k_angular
 
-        Rigidbody.positional_correction(rb1, rb2, penetration, normal, inv_eff_mass)
 
         J = -(1 + restitution) * v_norm / inv_eff_mass
 
@@ -100,6 +99,55 @@ class Rigidbody:
 
         if apply_friction:
             rb1._apply_friction_impulse(rb2, relative_vel, normal, J, r1, r2)
+
+        return J
+
+
+    @staticmethod
+    def applyFrictionImpulse(rb1, rb2, contact_point, normal, penetration, dt):
+        if not rb1.isKinematic:
+            rb1.velocity += (rb1.force * rb1.invMass) * dt
+            rb1.force.Zero()
+        if not rb2.isKinematic:
+            rb2.velocity += (rb2.force * rb2.invMass) * dt
+            rb2.force.Zero()
+
+        r1 = contact_point - rb1.parent.position
+        r2 = contact_point - rb2.parent.position
+
+        v1_at_p = rb1.velocity - rb1.angular_velocity.cross(r1)
+        v2_at_p = rb2.velocity - rb2.angular_velocity.cross(r2)
+        relative_vel = v2_at_p - v1_at_p
+        v_norm = relative_vel.dot(normal)
+
+        if v_norm >= 0:
+            return 0
+
+        rn1 = r1.cross(normal)
+        rn2 = r2.cross(normal)
+
+        if not rb1.isKinematic:
+            term1 = (Vector3.from_np(rb1.Iinv_world() @ rn1.to_np())).cross(r1)
+        else:
+            term1 = Vector3(0, 0, 0)
+
+        if not rb2.isKinematic:
+            term2 = (Vector3.from_np(rb2.Iinv_world() @ rn2.to_np())).cross(r2)
+        else:
+            term2 = Vector3(0, 0, 0)
+
+        restitution = rb1._get_restitution(rb2, v_norm)
+
+        k_linear = (0 if rb1.isKinematic else rb1.invMass) + (0 if rb2.isKinematic else rb2.invMass)
+        k_angular = normal.dot(term1 + term2)
+        inv_eff_mass = k_linear + k_angular
+
+
+        J = -(1 + restitution) * v_norm / inv_eff_mass
+
+        rb1._apply_friction_impulse(rb2, relative_vel, normal, J, r1, r2)
+        return J
+
 
     @staticmethod
     def positional_correction(rb1, rb2, penetration, normal, inv_eff_mass):
