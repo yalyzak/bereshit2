@@ -91,7 +91,7 @@ def run(scene,speed=1, gizmos=False, scriptRefreshRate=None,tick=1/60, Render=Tr
         start_async_loop(MaxTime=MaxTime)
 
 def run_max_speed(scene, scriptRefreshRate=None, tick=1 / 60, Render=True, ForceRenderInitialize=True,
-                  gravity=Vector3(0, -9.8, 0), physicqs_epochs=10, MaxTime=None):
+                  gravity=Vector3(0, -9.8, 0), physics_epochs=10, MaxTime=None):
     Exit = [False]
     if not Render:
         ForceRenderInitialize = False

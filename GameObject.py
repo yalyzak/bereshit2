@@ -14,8 +14,12 @@ class GameObject(GameObject):
         self.add_component(Material.Material())
         self.add_component(MeshRander.MeshRander(shape="box"))
 
+    def add_component(self, *components):
+        for component in components:
+            self._add_component(component)
+        return self
 
-    def add_component(self, component):
+    def _add_component(self, component):
         name= None
         if "attach" in type(component).__dict__:
             name = component.attach(self)
