@@ -5,8 +5,8 @@ import numpy as np
 import trimesh
 from PIL import Image
 
-from bereshit.Vector3 import Vector3
-from bereshit.bereshitCore import Component
+from bereshit.bereshitCore import Vector3
+from bereshit import Component
 
 
 class MeshRander(Component):

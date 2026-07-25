@@ -1,3 +1,4 @@
+import copy
 
 from bereshit import Material, MeshRander
 from bereshit.bereshitCore import GameObject
@@ -8,7 +9,8 @@ class GameObject(GameObject):
         super().__init__(*args, **kwargs)
 
         # Keeps original Python component objects alive
-        self._py_components = {}
+        self._components = {}
+        self._py_components = []
 
 
         self.add_component(Material.Material())
@@ -27,16 +29,47 @@ class GameObject(GameObject):
 
         # Save by component name, for cam.Camera
         if not name:
-            self._py_components[component.__class__.__name__] = component
+            self._components[component.__class__.__name__] = component
+            if component.is_python_component():
+                self._py_components.append(component)
         else:
-            self._py_components[name] = component
-
+            self._components[name] = component
+            if component.is_python_component():
+                self._py_components.append(component)
 
         return self
 
     def __getattr__(self, name):
-        if "_py_components" in self.__dict__:
-            if name in self._py_components:
-                return self._py_components[name]
+        if "_components" in self.__dict__:
+            if name in self._components:
+                return self._components[name]
 
         raise AttributeError(name)
+
+    def __deepcopy__(self, memo):
+        # Return the existing copy when this object was already visited.
+        if id(self) in memo:
+            return memo[id(self)]
+
+        obj = GameObject(
+            self.transform.position,
+            self.transform.rotation,
+            self.transform.size,
+            [],
+            self.name
+        )
+
+        # Register the copy BEFORE recursively copying components or children.
+        memo[id(self)] = obj
+
+        for component in self._components.values():
+            component_copy = copy.copy(component)
+
+            if component_copy is not None:
+                obj.add_component(component_copy)
+
+        for child in self.children:
+            child_copy = copy.deepcopy(child, memo)
+            obj.add_child(child_copy)
+
+        return obj

@@ -1,4 +1,4 @@
-from bereshit.bereshitCore import Component
+from bereshit import Component
 
 class Camera(Component):
     def __init__(self, width=1920, hight=1080, FOV=120, VIEWER_DISTANCE=0, shading="wire"):

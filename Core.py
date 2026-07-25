@@ -118,7 +118,9 @@ def run_max_speed(scene, scriptRefreshRate=None, tick=1 / 60, Render=True, Force
             if MaxTime is not None and simulated_time >= MaxTime:
                 print(f"Stopping simulation: reached MaxTime ({MaxTime})")
                 print(f"simulated time escaped: {simulated_time}")
-                print(f"real time escaped: {time.perf_counter() - startedTime}")
+                realTime = time.perf_counter() - startedTime
+                print(f"real time escaped: {realTime}")
+                print(f"average speed: {simulated_time/realTime}")
                 world.Exit()
                 exit()
 

@@ -1,6 +1,7 @@
 import time
 import keyboard
-from bereshit.bereshitCore import Component, Vector3
+from bereshit.bereshitCore import Vector3
+from bereshit import Component
 
 class CamController(Component):
     def __init__(self,speed=10,speed2=10):

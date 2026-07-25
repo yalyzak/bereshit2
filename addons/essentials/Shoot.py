@@ -1,6 +1,6 @@
 import random
 
-from bereshit import Object,Camera,Vector3, Rigidbody, BoxCollider, MeshRander, Quaternion, Render, Physics
+from bereshit import GameObject, Camera,Vector3, Rigidbody, BoxCollider, MeshRander, Quaternion, Render
 from bereshit.Collider import Collider
 import mouse  # pip install mouse
 from bereshit.render import Text,Box

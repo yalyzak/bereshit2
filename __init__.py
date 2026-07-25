@@ -1,21 +1,15 @@
-
-from .Vector3 import Vector3
-from .Vector2 import Vector2
-from .Quaternion import Quaternion
-from .Object import Object
+from .PyComponent import Component
 from .GameObject import GameObject
-from .Rigidbody import Rigidbody
-from .BoxCollider import BoxCollider
-# from .Material import Material
 from .Camera import Camera
 from .MeshRander import MeshRander
-from .FixedJoint import FixedJoint
-from .HingeJoint import HingeJoint
 from .render import BereshitRenderer as Render
 from .render import Text as Text
-from .Physics import Physics
-from .Physics import RaycastHit
-from .Cache import Cache
+from bereshitCore import Vector3
+from bereshitCore import Quaternion
+from bereshitCore import BoxCollider
+from bereshitCore import Rigidbody
+from bereshitCore import FixedJoint
+from bereshitCore import HingeJoint
 
 
 

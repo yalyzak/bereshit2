@@ -1,4 +1,4 @@
-from bereshit.bereshitCore import Component
+from bereshit import Component
 
 class Material(Component):
     COLOR_MAP = {
@@ -11,7 +11,6 @@ class Material(Component):
         "gray": (0.5, 0.5, 0.5),
         # Add more as needed
     }
-
     def __init__(self, kind="Steel", color="white"):
         super().__init__()
 

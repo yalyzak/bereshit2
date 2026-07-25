@@ -2,8 +2,8 @@ import math
 import time
 
 import mouse
-
-from bereshit.bereshitCore import Component, Vector3, Quaternion
+from bereshit import Component
+from bereshit.bereshitCore import Vector3, Quaternion
 
 CENTER_X = 960
 CENTER_Y = 540
