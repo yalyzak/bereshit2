@@ -387,7 +387,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
 
     def prepare_meshes(self):
         shading = self.cam.shading
-        objs = self.root_object.get_all_children()
+        objs = self.root_object.search_by_component("MeshRander")
         if shading == "wire":
             self.wire_shading(objs)
         elif shading == "solid":
@@ -501,7 +501,7 @@ class BereshitRenderer(moderngl_window.WindowConfig):
         #     self.wnd.close()
 
         # collect all scene objects (root + children)
-        scene_objs = self.root_object.get_all_children()
+        scene_objs = self.root_object.search_by_component("MeshRander")
 
         # ignore the camera (and any other special objs)
         skip_objs = {self.camera_obj}
