@@ -10,6 +10,7 @@ from bereshitCore import BoxCollider
 from bereshitCore import Rigidbody
 from bereshitCore import FixedJoint
 from bereshitCore import HingeJoint
+from bereshitCore import World
 
 
 

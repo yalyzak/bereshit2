@@ -47,29 +47,20 @@ class GameObject(GameObject):
         raise AttributeError(name)
 
     def __deepcopy__(self, memo):
-        # Return the existing copy when this object was already visited.
-        if id(self) in memo:
-            return memo[id(self)]
+        existing = memo.get(id(self))
+        if existing is not None:
+            return existing
 
-        obj = GameObject(
-            self.transform.position,
-            self.transform.rotation,
-            self.transform.size,
-            [],
-            self.name
-        )
+        result = super().deep_copy()
+        memo[id(self)] = result
 
-        # Register the copy BEFORE recursively copying components or children.
-        memo[id(self)] = obj
 
         for component in self._components.values():
             component_copy = copy.copy(component)
+            result.add_component(component_copy)
 
-            if component_copy is not None:
-                obj.add_component(component_copy)
 
-        for child in self.children:
-            child_copy = copy.deepcopy(child, memo)
-            obj.add_child(child_copy)
+        return result
 
-        return obj
+    def addPythonComponents(self):
+        pass
