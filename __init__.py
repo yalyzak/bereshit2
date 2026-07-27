@@ -1,4 +1,4 @@
-from .PyComponent import Component
+from .Component import Component
 from .GameObject import GameObject
 from .Camera import Camera
 from .MeshRander import MeshRander
