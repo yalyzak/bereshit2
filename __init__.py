@@ -1,4 +1,4 @@
-from .PyComponent import Component
+from .Component import Component
 from .GameObject import GameObject
 from .Camera import Camera
 from .MeshRander import MeshRander
@@ -10,6 +10,7 @@ from bereshitCore import BoxCollider
 from bereshitCore import Rigidbody
 from bereshitCore import FixedJoint
 from bereshitCore import HingeJoint
+from bereshitCore import World
 
 
 

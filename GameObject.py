@@ -47,6 +47,7 @@ class GameObject(GameObject):
         raise AttributeError(name)
 
     def __deepcopy__(self, memo):
+
         # Return the existing copy when this object was already visited.
         if id(self) in memo:
             return memo[id(self)]
@@ -73,3 +74,20 @@ class GameObject(GameObject):
             obj.add_child(child_copy)
 
         return obj
+
+    @staticmethod
+    def CopyHierarchy(original, object_map):
+        copied = GameObject(position=original.position, rotation=original.rotation, size=original.size, name=original.name)
+        object_map[original] = copied
+
+        for comp in original.components:
+            copied_comp = comp.copy()
+
+
+    def Copy(self):
+        objectMap = {}
+        result = GameObject.CopyHierarchy(self, objectMap)
+        GameObject.RemapHierarchy(result, objectMap)
+        GameObject.AttachHierarchy(result)
+        return result
+
