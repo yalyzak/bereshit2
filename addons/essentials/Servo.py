@@ -3,41 +3,39 @@ import keyboard
 
 
 class Servo(Component):
-    def __init__(self, mount, axis, use_model=False, useKeyboard=False, max_rotation=90, min_rotation=-90):
+    def __init__(self, mount, axis, max_rotation=90, min_rotation=-90, speed=10, torque=1, max_speed=60):
         super(Servo, self).__init__()
         self._servo = None
         self._mount = mount
         self._axis = axis
         self._max_r = max_rotation
         self._min_r = min_rotation
-        self.use_model = use_model
-        self.useKeyboard = useKeyboard
+        self._speed = speed
+        self._torque = torque
+        self._max_speed = max_speed
 
     def attach(self, parent):
         self._servo = parent
 
-        if self.useKeyboard:
-            self._servo.add_component(
-                HingeJoint(self._mount, self._axis),
-                ServoControllerKeyboard(self._mount, max=self._max_r, min=self._min_r))
-        else:
-            self._servo.add_component(
-                HingeJoint(self._mount, self._axis),
-                ServoController(self._mount, max_rotation=self._max_r, min_rotation=self._min_r))
 
-        if self.use_model:
-            self._servo.add_component(MeshRander(obj_path="data/servo.glb"))
+        self._servo.add_component(
+            HingeJoint(self._mount, self._axis),
+            ServoController(self._mount, max_rotation=self._max_r, min_rotation=self._min_r, input_speed=self._speed, max_speed=self._max_speed, max_torque=self._torque))
+
         return "Servo"
 
 
 class ServoController(Component):
-    def __init__(self, other, max_rotation=90, min_rotation=-90):
-        super(ServoController, self).__init__()
-        self.target_angle = 0.0
+    def get_target_angle(self):
+        return self._target_angle
 
-        self.max_speed = 6.54
-        self.input_speed = 120.0
-        self.max_torque = 10.32
+    def __init__(self, other, max_rotation=90, min_rotation=-90, max_speed=1, input_speed=60, max_torque=1):
+        super(ServoController, self).__init__()
+        self._target_angle = 0.0
+
+        self.max_speed = max_speed
+        self.input_speed = input_speed
+        self.max_torque = max_torque
 
         self._axis = Vector3()
         self.max_rotation = max_rotation
@@ -45,15 +43,15 @@ class ServoController(Component):
         self.other = other
 
     def Reset(self):
-        self.target_angle = 0.0
+        self._target_angle = 0.0
 
     def move(self, input_value, dt):
         joint = self.parent.HingeJoint
         self._axis = joint.axis_world.normalized()
 
-        self.target_angle += input_value * self.input_speed * dt
-        self.target_angle = max(
-            min(self.target_angle, self.max_rotation),
+        self._target_angle += input_value * self.input_speed * dt
+        self._target_angle = max(
+            min(self._target_angle, self.max_rotation),
             self.min_rotation
         )
 
@@ -64,7 +62,7 @@ class ServoController(Component):
         relative_q = self.other.transform.quaternion.conjugate() * self.parent.transform.quaternion
         current_angle = relative_q.to_euler().dot(axis)
 
-        error = self.target_angle - current_angle
+        error = self._target_angle - current_angle
         error = (error + 180) % 360 - 180
 
         angular_velocity = rb.angular_velocity.dot(axis)
