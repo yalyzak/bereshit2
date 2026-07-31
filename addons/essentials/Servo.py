@@ -3,7 +3,7 @@ import keyboard
 
 
 class Servo(Component):
-    def __init__(self, mount, axis, max_rotation=90, min_rotation=-90, speed=10, torque=1, max_speed=60):
+    def __init__(self, mount, axis, max_rotation=90, min_rotation=-90, speed=10, torque=10, max_speed=60):
         super(Servo, self).__init__()
         self._servo = None
         self._mount = mount
