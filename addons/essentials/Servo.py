@@ -3,7 +3,7 @@ import keyboard
 
 
 class Servo(Component):
-    def __init__(self, mount, axis, max_rotation=90, min_rotation=-90, speed=10, torque=1, max_speed=60):
+    def __init__(self, mount, axis, max_rotation=90, min_rotation=-90, speed=60, torque=0.1, max_speed=30):
         super(Servo, self).__init__()
         self._servo = None
         self._mount = mount
@@ -42,7 +42,10 @@ class ServoController(Component):
         self.min_rotation = min_rotation
         self.other = other
 
-    def Reset(self):
+    def attach(self, parent):
+        self.rb = parent.Rigidbody
+
+    def ResetToDefault(self):
         self._target_angle = 0.0
 
     def move(self, input_value, dt):
@@ -57,7 +60,6 @@ class ServoController(Component):
 
     def fix(self, dt):
         axis = self.parent.HingeJoint.axis_world.normalized()
-        rb = self.parent.Rigidbody
 
         relative_q = self.other.transform.quaternion.conjugate() * self.parent.transform.quaternion
         current_angle = relative_q.to_euler().dot(axis)
@@ -65,7 +67,7 @@ class ServoController(Component):
         error = self._target_angle - current_angle
         error = (error + 180) % 360 - 180
 
-        angular_velocity = rb.angular_velocity.dot(axis)
+        angular_velocity = self.rb.angular_velocity.dot(axis)
 
         # degrees/sec
         max_speed = self.max_speed
@@ -87,7 +89,7 @@ class ServoController(Component):
         if abs(error) < 0.3 and abs(angular_velocity) < 0.2:
             torque = 0
 
-        self.parent.Rigidbody.apply_angular_impulse(torque * dt * axis)
+        self.rb.apply_angular_impulse(torque * dt * axis)
 
     def clamp_rotation(self):
         self.parent.transform.quaternion = max(min(self.parent.transform.quaternion.to_euler(), self.max_rotation), -self.max_rotation)

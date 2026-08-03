@@ -97,7 +97,7 @@ def run_max_speed(scene, scriptRefreshRate=None, tick=1 / 60, Render=True, Force
     if not Render:
         ForceRenderInitialize = False
     if scriptRefreshRate is None:
-        scriptRefreshRate = (1 / 30) / tick
+        scriptRefreshRate = 2
     else:
         scriptRefreshRate = scriptRefreshRate / tick
 
