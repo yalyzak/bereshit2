@@ -1,0 +1,10 @@
+numpy
+moderngl
+moderngl_window
+pyrr
+glfw
+open3d
+trimesh
+numba
+keyboard
+mouse
